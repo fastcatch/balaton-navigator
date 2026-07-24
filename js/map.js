@@ -1,0 +1,384 @@
+/**
+ * Leaflet map adapter.
+ *
+ * Everything that knows about Leaflet lives here. The rest of the app passes
+ * plain data in and receives plain callbacks out.
+ *
+ * Leaflet is loaded as a global by a plain <script> tag rather than imported,
+ * because it ships as a UMD bundle and this project has no build step.
+ */
+
+/* global L */
+
+import { haversine, destinationPoint, relativeBearing } from './core/geo.js';
+
+/** Bounding box for the opening view, before any GPS fix arrives. */
+const BALATON_VIEW = [
+  [46.68, 17.19],
+  [47.08, 18.15],
+];
+
+/**
+ * Tile sources (spec section 4).
+ *
+ * Only tiles the user actually looks at are ever requested — no prefetching,
+ * no region download. That is what keeps this within the OSM tile usage
+ * policy (operations.osmfoundation.org/policies/tiles).
+ *
+ * SCALING NOTE: if this app ever gets meaningful traffic, the OSM community
+ * servers are the wrong place to get tiles from. Swap the base layer URL for
+ * a paid provider (MapTiler, Thunderforest) or a self-hosted renderer. That
+ * is a one-line change here and needs no other modification.
+ */
+const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const SEAMARK_URL = 'https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png';
+
+const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> közreműködők';
+const SEAMARK_ATTRIBUTION = '&copy; <a href="https://www.openseamap.org/">OpenSeaMap</a>';
+
+/**
+ * Colours for the facing indicators.
+ *
+ * Magenta rather than blue: the base map is largely blue water and green
+ * land, and a blue sight line vanishes into the lake in bright sun. Magenta
+ * is also the nautical-chart convention for course lines, and stays distinct
+ * from the brass waypoints and the orange track.
+ *
+ * Blue stays reserved for the position dot — blue is where you are, magenta
+ * is where you are looking.
+ */
+const HEADING_COLOR = '#ff2d95';
+const HEADING_CASING = '#2b0a1c';
+
+/**
+ * Own-position marker: a view cone behind a dot.
+ *
+ * The whole element is rotated to the heading. The cone fades out towards
+ * its far edge, because the direction is known far more precisely than how
+ * far ahead the sailor can actually see — a hard edge would suggest a range
+ * the app is not measuring.
+ */
+const POSITION_MARKER_HTML = `
+<div class="pos-marker">
+  <svg class="pos-marker__cone" viewBox="-38 -38 76 76" width="76" height="76" aria-hidden="true">
+    <defs>
+      <linearGradient id="cone-fade" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="${HEADING_COLOR}" stop-opacity="0.9"/>
+        <stop offset="1" stop-color="${HEADING_COLOR}" stop-opacity="0.1"/>
+      </linearGradient>
+    </defs>
+    <path d="M0 0 L-18 -31 A36 36 0 0 1 18 -31 Z"
+          fill="url(#cone-fade)"
+          stroke="rgba(255,255,255,0.85)" stroke-width="1.5" stroke-linejoin="round"/>
+  </svg>
+  <div class="pos-marker__dot"></div>
+</div>`;
+
+export function createMap(elementId, { onMapClick, onWaypointClick, onFollowChange } = {}) {
+  const map = L.map(elementId, {
+    zoomControl: false,
+    attributionControl: true,
+    tap: false, // Leaflet's tap emulation misfires on modern iOS
+  }).fitBounds(BALATON_VIEW);
+
+  L.control.zoom({ position: 'topright' }).addTo(map);
+
+  L.tileLayer(OSM_URL, {
+    maxZoom: 19,
+    attribution: OSM_ATTRIBUTION,
+    crossOrigin: true,
+  }).addTo(map);
+
+  L.tileLayer(SEAMARK_URL, {
+    maxZoom: 18,
+    attribution: SEAMARK_ATTRIBUTION,
+    crossOrigin: true,
+    // The overlay is sparse; missing tiles are normal, not an error worth
+    // retrying or reporting.
+    errorTileUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+  }).addTo(map);
+
+  const waypointLayer = L.layerGroup().addTo(map);
+  const routeLine = L.polyline([], {
+    color: '#c9a24b',
+    weight: 2,
+    dashArray: '6 6',
+    interactive: false,
+  }).addTo(map);
+  const trackLayer = L.layerGroup().addTo(map);
+
+  /**
+   * Sight line from the boat along the current heading, drawn out past the
+   * edge of the view so it reaches whatever is being looked at rather than
+   * stopping at an arbitrary length.
+   *
+   * Drawn as two polylines: a dark casing under a bright core. A single line
+   * cannot stay legible across this map — pale over sunlit water, dark over
+   * shadowed land — whereas an outlined one reads against both. The casing
+   * is solid so the gaps between the core's dashes stay visible too.
+   */
+  const headingCasing = L.polyline([], {
+    color: HEADING_CASING,
+    weight: 8,
+    opacity: 0.55,
+    lineCap: 'round',
+    interactive: false,
+  }).addTo(map);
+
+  const headingLine = L.polyline([], {
+    color: HEADING_COLOR,
+    weight: 4,
+    opacity: 1,
+    // Long dashes with short breaks: still reads as a projection rather than
+    // a course to steer, without the even dash/gap that looks like the
+    // railway symbol on a map.
+    dashArray: '28 8',
+    lineCap: 'butt',
+    interactive: false,
+  }).addTo(map);
+
+  let positionMarker = null;
+  let accuracyCircle = null;
+  let following = true;
+  let hasFix = false;
+  let lastPosition = null;
+  let lastHeading = null;
+
+  /**
+   * Heading as an unwrapped, continuously accumulating angle.
+   *
+   * The CSS transition interpolates numerically, so going from 359 to 1
+   * would animate backwards through the whole circle. Accumulating the
+   * shortest signed step keeps the cone swinging the short way instead.
+   */
+  let displayHeading = null;
+
+  function advanceDisplayHeading(heading) {
+    if (heading == null) return;
+    if (displayHeading == null) {
+      displayHeading = heading;
+      return;
+    }
+    const current = ((displayHeading % 360) + 360) % 360;
+    displayHeading += relativeBearing(heading, current);
+  }
+
+  // Panning by hand turns off following so the user can look around freely
+  // (spec 6.2). Programmatic setView does not fire dragstart, so this needs
+  // no suppression flag. Pinch-zoom deliberately does not break follow.
+  map.on('dragstart', () => {
+    if (!following) return;
+    following = false;
+    onFollowChange?.(false);
+  });
+
+  map.on('click', (e) => onMapClick?.(e.latlng.lat, e.latlng.lng));
+
+  /**
+   * Redraw the sight line so it runs from the boat to just beyond the
+   * furthest visible corner. Recomputed on pan and zoom, since both change
+   * how far "off screen" is.
+   *
+   * Drawn only when a heading was actually measured — never inferred, so the
+   * line cannot imply a direction the app does not know.
+   */
+  function updateHeadingLine() {
+    if (!lastPosition || lastHeading == null) {
+      headingLine.setLatLngs([]);
+      headingCasing.setLatLngs([]);
+      return;
+    }
+
+    const bounds = map.getBounds();
+    const corners = [
+      bounds.getNorthWest(), bounds.getNorthEast(),
+      bounds.getSouthWest(), bounds.getSouthEast(),
+    ];
+
+    let reach = 0;
+    for (const corner of corners) {
+      reach = Math.max(reach, haversine(lastPosition, { lat: corner.lat, lon: corner.lng }));
+    }
+
+    const end = destinationPoint(lastPosition, lastHeading, reach * 1.1);
+    const path = [
+      [lastPosition.lat, lastPosition.lon],
+      [end.lat, end.lon],
+    ];
+    headingCasing.setLatLngs(path);
+    headingLine.setLatLngs(path);
+  }
+
+  map.on('moveend zoomend', updateHeadingLine);
+
+  /** Point the marker's cone along the heading, or hide it if there is none. */
+  function applyMarkerRotation(heading) {
+    // firstElementChild, not firstChild: the icon markup is indented, so
+    // firstChild is a text node with no style or classList.
+    const el = positionMarker?.getElement()?.firstElementChild;
+    if (!el) return;
+    el.style.transform = heading == null ? '' : `rotate(${displayHeading}deg)`;
+    el.classList.toggle('pos-marker--heading', heading != null);
+  }
+
+  function waypointIcon(number, isTarget) {
+    return L.divIcon({
+      className: '',
+      html: `<div class="wp-marker${isTarget ? ' wp-marker--target' : ''}">${number}</div>`,
+      iconSize: isTarget ? [38, 38] : [28, 28],
+      iconAnchor: isTarget ? [19, 19] : [14, 14],
+    });
+  }
+
+  return {
+    get leaflet() {
+      return map;
+    },
+
+    get isFollowing() {
+      return following;
+    },
+
+    /** Draw the route: numbered markers plus the dashed line joining them. */
+    setWaypoints(waypoints, targetIndex) {
+      waypointLayer.clearLayers();
+
+      waypoints.forEach((wp, i) => {
+        L.marker([wp.lat, wp.lon], {
+          icon: waypointIcon(i + 1, i === targetIndex),
+          keyboard: false,
+          // Draw the active target above its neighbours so it stays legible
+          // where waypoints are close together.
+          zIndexOffset: i === targetIndex ? 1000 : 0,
+        })
+          .on('click', (e) => {
+            L.DomEvent.stopPropagation(e); // do not also drop a new waypoint
+            onWaypointClick?.(i, wp);
+          })
+          .addTo(waypointLayer);
+      });
+
+      routeLine.setLatLngs(waypoints.map((wp) => [wp.lat, wp.lon]));
+    },
+
+    /** Move the own-position marker, and recentre if following. */
+    setPosition(position, heading) {
+      if (!position) return;
+      const latlng = [position.lat, position.lon];
+      lastPosition = position;
+      lastHeading = heading ?? null;
+
+      if (!positionMarker) {
+        accuracyCircle = L.circle(latlng, {
+          radius: position.accuracy ?? 0,
+          color: '#4da3ff',
+          weight: 1,
+          fillOpacity: 0.12,
+          interactive: false,
+        }).addTo(map);
+
+        positionMarker = L.marker(latlng, {
+          icon: L.divIcon({ className: '', html: POSITION_MARKER_HTML, iconSize: [76, 76], iconAnchor: [38, 38] }),
+          interactive: false,
+          zIndexOffset: 2000,
+        }).addTo(map);
+      } else {
+        positionMarker.setLatLng(latlng);
+        accuracyCircle.setLatLng(latlng);
+        accuracyCircle.setRadius(position.accuracy ?? 0);
+      }
+
+      advanceDisplayHeading(heading);
+      applyMarkerRotation(heading);
+      updateHeadingLine();
+
+      if (!hasFix) {
+        hasFix = true;
+        map.setView(latlng, Math.max(map.getZoom(), 14));
+      } else if (following) {
+        map.panTo(latlng, { animate: true, duration: 0.4 });
+      }
+    },
+
+    /**
+     * Update only the heading.
+     *
+     * Compass readings arrive far more often than GPS fixes, and while lying
+     * at anchor no fix may arrive at all. Routing them through setPosition
+     * would either stall the cone or trigger a recentre on every reading.
+     */
+    setHeading(heading) {
+      lastHeading = heading ?? null;
+      advanceDisplayHeading(heading);
+      applyMarkerRotation(heading);
+      updateHeadingLine();
+    },
+
+    /** Draw a track as one or more polylines, split at recording gaps. */
+    setTrack(segments, { color = '#ff8a3d', weight = 3 } = {}) {
+      trackLayer.clearLayers();
+      for (const segment of segments) {
+        if (segment.length < 2) continue;
+        L.polyline(
+          segment.map((p) => [p.lat, p.lon]),
+          { color, weight, interactive: false }
+        ).addTo(trackLayer);
+      }
+    },
+
+    clearTrack() {
+      trackLayer.clearLayers();
+    },
+
+    setFollow(value) {
+      following = value;
+      onFollowChange?.(value);
+      if (value && positionMarker) map.panTo(positionMarker.getLatLng());
+    },
+
+    /**
+     * Zoom to fit a set of coordinates — a saved track, or the active route.
+     *
+     * `maxZoom` matters for the degenerate cases: a single waypoint, or a
+     * course whose points all share a position, collapses to zero-size bounds
+     * and would otherwise slam to maximum zoom.
+     */
+    fitPoints(points, { maxZoom = 16, clearControls = false } = {}) {
+      const latlngs = points.map((p) => [p.lat, p.lon]);
+      if (latlngs.length === 0) return;
+
+      // The overlay buttons sit over the bottom-right corner, and fitBounds
+      // will happily place a waypoint underneath them. Padding that corner
+      // harder keeps the framed content clear of them.
+      map.fitBounds(L.latLngBounds(latlngs), {
+        maxZoom,
+        paddingTopLeft: [40, 40],
+        paddingBottomRight: clearControls ? [80, 90] : [40, 40],
+      });
+    },
+
+    /** Open a popup with DOM content, e.g. the waypoint actions menu. */
+    openPopup(lat, lon, content) {
+      L.popup({ closeButton: true, autoPan: true, className: 'wp-popup' })
+        .setLatLng([lat, lon])
+        .setContent(content)
+        .openOn(map);
+    },
+
+    closePopup() {
+      map.closePopup();
+    },
+
+    getZoom() {
+      return map.getZoom();
+    },
+
+    onZoom(handler) {
+      map.on('zoomend', handler);
+    },
+
+    invalidateSize() {
+      map.invalidateSize();
+    },
+  };
+}

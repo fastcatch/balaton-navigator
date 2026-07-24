@@ -1,0 +1,11 @@
+{
+  "name": "balaton-navigator",
+  "version": "1.0.0",
+  "description": "Sailing route planner and live navigation PWA for Lake Balaton",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "serve": "node scripts/serve.js"
+  }
+}

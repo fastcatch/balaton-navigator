@@ -1,0 +1,34 @@
+{
+  "_comment": [
+    "Routes shipped with the app. Every device that loads the app gets these,",
+    "without anyone having to enter them by hand.",
+    "",
+    "Rules:",
+    "  seedId  - permanent identifier. NEVER reuse or change one: it is how a",
+    "            route already on someone's phone is matched to this file.",
+    "  version - bump when the course changes. Devices pick up the new version",
+    "            on next load, unless the user has edited their own copy.",
+    "",
+    "Deleting a route here does NOT remove it from phones that already have it.",
+    "A user who deletes a seeded route does not get it back on the next load.",
+    "",
+    "Waypoint order is the sailing order. Coordinates are decimal degrees, WGS84.",
+    "Validated by test/seed-routes.test.js - run `npm test` after editing."
+  ],
+
+  "routes": [
+    {
+      "seedId": "feherszalag-2026",
+      "version": 1,
+      "name": "Fehérszalag 2026",
+      "note": "Kékszalag-hétvégi túraverseny. Rajt és cél Balatonfürednél.",
+      "waypoints": [
+        { "name": "Rajt",   "lat": 46.9483, "lon": 17.8948 },
+        { "name": "Kenese", "lat": 47.0232, "lon": 18.1054 },
+        { "name": "Siófok", "lat": 46.9201, "lon": 18.0399 },
+        { "name": "Tihany", "lat": 46.9186, "lon": 17.9092 },
+        { "name": "Cél",    "lat": 46.9483, "lon": 17.8948 }
+      ]
+    }
+  ]
+}

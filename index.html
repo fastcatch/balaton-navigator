@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<title>Balaton Navigátor</title>
+
+<!-- viewport-fit=cover lets the layout reach into the notch area; the safe
+     area insets are honoured in CSS. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b1f33">
+<meta name="description" content="Vitorlázási útvonaltervező és navigáció a Balatonra">
+
+<!-- Full-screen when launched from the iPhone home screen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Balaton">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div id="app">
+
+  <header id="header">
+    <h1>Balaton Navigátor</h1>
+    <button id="route-name" class="route-name" type="button">Nincs aktív útvonal</button>
+  </header>
+
+  <div id="banners"></div>
+
+  <main id="map-wrap">
+    <div id="map"></div>
+    <div class="map-buttons">
+      <button id="fit-route" class="map-btn is-hidden" type="button" aria-label="Útvonal a képernyőre">⛶ Útvonal</button>
+      <button id="recenter" class="map-btn is-hidden" type="button" aria-label="Középre a saját pozícióra">◎ Közép</button>
+    </div>
+    <div id="add-hint" class="add-hint is-hidden">Koppints a térképre a waypoint elhelyezéséhez</div>
+  </main>
+
+  <section id="navpanel" class="navpanel" aria-live="polite"></section>
+
+  <nav id="actions" class="actions">
+    <button id="btn-add" type="button">+ Waypoint</button>
+    <button id="btn-record" type="button">● Rögzít</button>
+    <button id="btn-routes" type="button">Útvonalak</button>
+    <button id="btn-tracks" type="button">Track-ek</button>
+    <button id="btn-settings" type="button" aria-label="Beállítások">⚙</button>
+  </nav>
+
+</div>
+
+<!-- Full-screen views, one at a time. Not nested modals (spec 7). -->
+<div id="view" class="view is-hidden" role="dialog" aria-modal="true">
+  <header class="view-header">
+    <button id="view-back" type="button" aria-label="Vissza">‹ Vissza</button>
+    <h2 id="view-title"></h2>
+  </header>
+  <div id="view-body" class="view-body"></div>
+</div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
