@@ -29,6 +29,22 @@
         { "name": "Tihany", "lat": 46.9186, "lon": 17.9092 },
         { "name": "Cél",    "lat": 46.9483, "lon": 17.8948 }
       ]
+    },
+    {
+      "seedId": "kekszalag-2026",
+      "version": 1,
+      "name": "Kékszalag - 2026",
+      "note": "Kékszalag túraverseny. Rajt a sárga szektor északi végén, cél Balatonfürednél. Az iránybóják tájékoztató jellegűek, nem pályajelek.",
+      "waypoints": [
+        { "name": "Rajt",                    "lat": 46.942066, "lon": 17.902454 },
+        { "name": "1 - Kenese",              "lat": 47.023167, "lon": 18.105350 },
+        { "name": "2 - Siófok",              "lat": 46.920067, "lon": 18.039850 },
+        { "name": "Tihanyi iránybója",       "lat": 46.904467, "lon": 17.912067 },
+        { "name": "Balatongyörök iránybója", "lat": 46.739683, "lon": 17.340183 },
+        { "name": "Balatonberény iránybója", "lat": 46.722517, "lon": 17.330067 },
+        { "name": "3 - NY-i forduló",        "lat": 46.747550, "lon": 17.277950 },
+        { "name": "Cél",                     "lat": 46.948267, "lon": 17.894833 }
+      ]
     }
   ]
 }
