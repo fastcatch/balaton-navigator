@@ -1,5 +1,6 @@
 /**
- * Settings (spec 6.4): units, arrival radius, minimum accuracy, wake lock.
+ * Settings (spec 6.4): units, arrival radius, COG damping, minimum accuracy,
+ * wake lock.
  *
  * Deliberately short. The spec asks for no elaborate settings menu, so this
  * exposes only values that change behaviour a sailor would notice.
@@ -41,6 +42,15 @@ export function renderSettings({ settings, onChange }) {
     el('option', { value: 'nautical', textContent: 'Tengeri mérföld (NM)', selected: settings.units === 'nautical' }),
   ]);
 
+  const cogDamping = el('select', {
+    onChange: (e) => update({ cogDampingS: Number(e.target.value) }),
+  }, [
+    el('option', { value: '0', textContent: 'Nincs', selected: settings.cogDampingS === 0 }),
+    el('option', { value: '3', textContent: '3 mp', selected: settings.cogDampingS === 3 }),
+    el('option', { value: '5', textContent: '5 mp', selected: settings.cogDampingS === 5 }),
+    el('option', { value: '10', textContent: '10 mp', selected: settings.cogDampingS === 10 }),
+  ]);
+
   const keepAwake = el('select', {
     onChange: (e) => update({ keepAwake: e.target.value === 'yes' }),
   }, [
@@ -57,6 +67,17 @@ export function renderSettings({ settings, onChange }) {
       settings.arrivalRadiusM, 5, 1000,
       (v) => update({ arrivalRadiusM: v })
     ),
+
+    el('div', { className: 'field' }, [
+      el('label', { textContent: 'Haladási irány simítása' }),
+      cogDamping,
+      el('div', {
+        className: 'hint',
+        textContent:
+          'Ennyi másodpercnyi GPS-adatból átlagolja a haladási irányt. ' +
+          'Több: nyugodtabb fordulásjelző, lassabb reakció. Hullámos vízen érdemes növelni.',
+      }),
+    ]),
 
     numberField(
       'Track rögzítés max. pontatlanság (m)',

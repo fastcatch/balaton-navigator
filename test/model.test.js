@@ -80,6 +80,7 @@ test('default settings match the spec', () => {
   assert.equal(s.arrivalRadiusM, 30); // spec 6.4
   assert.equal(s.minAccuracyM, 50); // spec 6.3
   assert.equal(s.keepAwake, true);
+  assert.equal(s.cogDampingS, 5);
 });
 
 // ---------------------------------------------------------------------------

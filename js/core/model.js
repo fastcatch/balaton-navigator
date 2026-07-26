@@ -41,6 +41,10 @@ export function defaultSettings() {
     arrivalRadiusM: 30, // spec 6.4
     minAccuracyM: 50, // spec 6.3
     keepAwake: true,
+    // Seconds of GPS history averaged into the course over ground. Racing
+    // means frequent course changes, so this sits at the low end of what
+    // marine practice suggests; 0 disables damping entirely.
+    cogDampingS: 5,
   };
 }
 
