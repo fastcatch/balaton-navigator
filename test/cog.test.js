@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeCog, MIN_SPEED_MPS, STALE_MS } from '../js/core/cog.js';
+import { computeCog, chevronCount, MIN_SPEED_MPS, STALE_MS, ON_COURSE_DEG } from '../js/core/cog.js';
 
 const NOW = 1_700_000_000_000;
 
@@ -130,4 +130,34 @@ test('positions are differenced when the device reports no heading', () => {
   const samples = leg({ course: 210, heading: null });
   const result = computeCog(samples, { windowMs: 5000, nowT: NOW });
   assert.ok(Math.abs(result.cog - 210) < 1, `expected ~210, got ${result.cog}`);
+});
+
+// ---------------------------------------------------------------------------
+// Chevron bands
+// ---------------------------------------------------------------------------
+
+test('a small error counts as on course', () => {
+  assert.equal(chevronCount(0), 0);
+  assert.equal(chevronCount(ON_COURSE_DEG - 0.5), 0);
+});
+
+test('the bands are one, two and three chevrons', () => {
+  assert.equal(chevronCount(5), 1);
+  assert.equal(chevronCount(12), 2);
+  assert.equal(chevronCount(38), 3);
+});
+
+test('the count holds through a value sitting on a threshold', () => {
+  // Rising: crossing 10 promotes to two chevrons.
+  assert.equal(chevronCount(10, 1), 2);
+  // Falling: 9 is inside the hysteresis band, so it stays at two.
+  assert.equal(chevronCount(9, 2), 2);
+  // Falling further: 8 drops back to one.
+  assert.equal(chevronCount(8, 2), 1);
+});
+
+test('the upper threshold has hysteresis too', () => {
+  assert.equal(chevronCount(25, 2), 3);
+  assert.equal(chevronCount(24, 3), 3);
+  assert.equal(chevronCount(23, 3), 2);
 });

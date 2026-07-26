@@ -109,3 +109,40 @@ export function computeCog(samples, { windowMs, minSpeedMps = MIN_SPEED_MPS, now
     status: spreadDeg > MAX_STEADY_SPREAD_DEG ? 'unsteady' : 'ok',
   };
 }
+
+/**
+ * Error below which the boat counts as on course.
+ *
+ * The panel draws an up arrow rather than a side, so a boat holding its line
+ * does not flicker between port and starboard chevrons on GPS noise alone.
+ */
+export const ON_COURSE_DEG = 3;
+
+/**
+ * Step-up and step-down thresholds for the chevron bands.
+ *
+ * The gap between `up` and `down` is hysteresis. Without it, an error sitting
+ * on 10 degrees would switch between one and two chevrons several times a
+ * second, which reads as a fault rather than as a number.
+ */
+const BANDS = [
+  { up: 10, down: 8 },
+  { up: 25, down: 23 },
+];
+
+/**
+ * How many chevrons to draw for a turn of `absDeg`: 0 (on course) to 3.
+ *
+ * Stateless — the caller passes back what was drawn last time, which is what
+ * makes the hysteresis work without this module holding state.
+ */
+export function chevronCount(absDeg, previousCount = 0) {
+  if (absDeg < ON_COURSE_DEG) return 0;
+
+  let count = 1;
+  BANDS.forEach((band, i) => {
+    const wasAbove = previousCount >= i + 2;
+    if (wasAbove ? absDeg > band.down : absDeg >= band.up) count = i + 2;
+  });
+  return count;
+}
