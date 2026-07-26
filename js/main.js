@@ -19,6 +19,7 @@ import {
 import { applySeedRoutes } from './seeds.js';
 
 import { computeNav, advanceIfArrived } from './core/navigation.js';
+import { computeCog } from './core/cog.js';
 import { renderableSegments } from './core/track.js';
 import { trackToGpx, gpxFilename } from './core/gpx.js';
 import {
@@ -36,6 +37,13 @@ import { renderSettings } from './ui/settings.js';
 /** Accuracy above which the fix is flagged as untrustworthy (spec 8). */
 const POOR_ACCURACY_M = 100;
 
+/**
+ * How much fix history to keep for the COG filter.
+ *
+ * The longest damping setting is 10 s; the margin covers a fix arriving late.
+ */
+const COG_BUFFER_MS = 15000;
+
 const $ = (id) => document.getElementById(id);
 
 const state = {
@@ -44,7 +52,13 @@ const state = {
   activeRoute: null,
   targetIndex: 0,
   position: null,
-  heading: null,
+  // Two different directions, deliberately not one field. The compass says
+  // which way the phone is pointing; the GPS says which way the boat is
+  // going. Merging them was what forced the phone to be held aligned with
+  // the boat's axis to read a turn.
+  viewHeading: null,
+  cogSamples: [],
+  cog: { cog: null, spreadDeg: null, status: 'nofix' },
   settings: defaultSettings(),
   positionError: null,
   addMode: false,
@@ -130,7 +144,7 @@ function renderBanners() {
   if (state.compassOffered && !state.compassOn) {
     banners.push(
       el('div', { className: 'banner banner--warn' }, [
-        document.createTextNode('Iránytű engedélyezhető az irányjelző nyílhoz. '),
+        document.createTextNode('Iránytű engedélyezhető a térképi látóirányhoz. '),
         el('button', { type: 'button', textContent: 'Engedélyezés', onClick: enableCompass }),
         el('button', { type: 'button', textContent: 'Nem kell', onClick: () => { state.compassOffered = false; render(); } }),
       ])
@@ -184,7 +198,19 @@ function renderMapLayers() {
 function renderLive() {
   const nav = currentNav();
 
-  renderNavPanel($('navpanel'), { nav, heading: state.heading, settings: state.settings });
+  // Computed here rather than in onPosition so the readout also refreshes on
+  // compass updates, and so it decays to 'nofix' when fixes stop arriving.
+  state.cog = computeCog(state.cogSamples, {
+    windowMs: state.settings.cogDampingS * 1000,
+    nowT: Date.now(),
+  });
+
+  renderNavPanel($('navpanel'), {
+    nav,
+    heading: state.viewHeading,
+    cog: state.cog,
+    settings: state.settings,
+  });
   renderBanners();
   renderMapLayers();
 
@@ -228,13 +254,14 @@ async function onPosition(position) {
   state.position = position;
   state.positionError = null;
 
-  // Compass heading is better than GPS course, but course is better than
-  // nothing and is available whenever the boat is actually moving.
-  //
-  // No declination correction here, unlike the compass: the Geolocation spec
-  // defines coords.heading relative to TRUE north, so it is already in the
-  // same reference as every bearing computed from coordinates.
-  if (!state.compassOn && position.heading != null) state.heading = position.heading;
+  // Kept whether or not a track is recording: the turn indicator needs recent
+  // fixes regardless. Nothing here touches viewHeading — GPS course reaches
+  // the panel through the filter and must never be drawn as a sight line.
+  state.cogSamples.push(position);
+  const cutoff = position.t - COG_BUFFER_MS;
+  while (state.cogSamples.length > 0 && state.cogSamples[0].t < cutoff) {
+    state.cogSamples.shift();
+  }
 
   if (tracker.isRecording) tracker.addPoint(position, state.settings);
 
@@ -245,7 +272,7 @@ async function onPosition(position) {
     await persistAppState();
   }
 
-  map.setPosition(position, state.heading);
+  map.setPosition(position, state.viewHeading);
 
   // A full render only when the target actually moved — once per waypoint,
   // not once per second — so an open list is not rebuilt under the user.
@@ -267,7 +294,7 @@ async function enableCompass() {
     state.compassOn = true;
     watchHeading({
       onHeading: (heading) => {
-        state.heading = heading;
+        state.viewHeading = heading;
         // Straight to the map: the cone and sight line must follow the boat
         // turning, which happens far more often than a new GPS fix arrives.
         map.setHeading(heading);
