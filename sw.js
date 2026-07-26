@@ -47,6 +47,7 @@ const SHELL = [
   './js/compass.js',
   './js/tracker.js',
   './js/core/geo.js',
+  './js/core/cog.js',
   './js/core/navigation.js',
   './js/core/track.js',
   './js/core/gpx.js',
