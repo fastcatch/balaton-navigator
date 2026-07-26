@@ -205,12 +205,7 @@ function renderLive() {
     nowT: Date.now(),
   });
 
-  renderNavPanel($('navpanel'), {
-    nav,
-    heading: state.viewHeading,
-    cog: state.cog,
-    settings: state.settings,
-  });
+  renderNavPanel($('navpanel'), { nav, cog: state.cog, settings: state.settings });
   renderBanners();
   renderMapLayers();
 

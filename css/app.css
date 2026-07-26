@@ -157,8 +157,8 @@ button:disabled { opacity: 0.4; }
 
 .nav-grid {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
+  grid-template-columns: 1fr 1fr;
+  align-items: baseline;
   gap: 12px;
 }
 
@@ -180,7 +180,7 @@ button:disabled { opacity: 0.4; }
   letter-spacing: -0.01em;
 }
 .nav-target {
-  grid-column: 1 / -1;
+  margin-top: 8px;
   font-size: 13px;
   color: var(--brass);
   overflow: hidden;
@@ -189,19 +189,86 @@ button:disabled { opacity: 0.4; }
 }
 .nav-message { font-size: 20px; font-weight: 600; color: var(--parchment); padding: 8px 0; }
 
-/* Relative-bearing arrow: turn until it points up. */
-.nav-arrow {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: 2px solid var(--brass);
-  display: grid;
-  place-items: center;
-  color: var(--brass-bright);
-  font-size: 30px;
-  line-height: 1;
+/* --- Turn indicator -------------------------------------------------
+ *
+ * Chevrons outrank the number, which outranks the tape. That ordering is
+ * the whole design: at six knots in chop the answer has to arrive before
+ * anything is read, so direction and rough magnitude are carried by shape
+ * and count alone. Hence no BALRA/JOBBRA labels and no numerals under the
+ * tape — they would only be read by someone who already had time to read.
+ *
+ * No transitions anywhere here. renderNavPanel rebuilds these nodes on
+ * every render, so a transition would have nothing persistent to animate.
+ * Smoothing belongs in the COG damping setting, not in CSS.
+ */
+.nav-steer { margin-top: 12px; }
+
+/* An unsteady course still shows, dimmed: mid-tack the number is real but
+   not yet settled, and hiding it would make the panel jump. */
+.nav-steer.is-unsteady { opacity: 0.42; }
+
+.nav-turn {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 20px;
 }
-.nav-arrow span { display: block; transition: transform 0.2s linear; }
+.nav-turn__chevrons {
+  font-size: 56px;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--brass-bright);
+  letter-spacing: -0.08em;
+}
+.nav-turn__degrees {
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.nav-tape {
+  position: relative;
+  height: 24px;
+  margin-top: 10px;
+  border-bottom: 2px solid var(--navy-light);
+}
+.nav-tape__tick {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: 6px;
+  margin-left: -0.5px;
+  background: var(--parchment-dim);
+  opacity: 0.55;
+}
+.nav-tape__tick--major { height: 13px; opacity: 0.9; }
+
+.nav-tape__marker {
+  position: absolute;
+  bottom: -3px;
+  width: 4px;
+  height: 24px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--brass-bright);
+}
+/* Off the end of the scale: a different colour, so a pegged marker is not
+   mistaken for a reading of exactly 45 degrees. */
+.nav-tape--pegged .nav-tape__marker {
+  width: 8px;
+  margin-left: -4px;
+  background: var(--warn);
+}
+
+.nav-cog-note {
+  margin-top: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--parchment-dim);
+}
 
 /* --- Banners -------------------------------------------------------- */
 
