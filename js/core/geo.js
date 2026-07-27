@@ -91,6 +91,26 @@ export function destinationPoint(from, bearingDeg, distanceM) {
 }
 
 /**
+ * Signed perpendicular distance in metres from `p` to the great circle
+ * through `from` and `to`. Positive means `p` lies to starboard of the track.
+ *
+ * The circle is deliberately not clipped to the segment. Past the target the
+ * value keeps reading as distance from the intended track extended onward,
+ * which is what a boat overstanding a mark needs to see; clipping would
+ * collapse it to zero exactly when the error is worth knowing.
+ */
+export function crossTrackDistance(from, to, p) {
+  const delta13 = haversine(from, p) / EARTH_RADIUS_M;
+  const theta13 = toRad(initialBearing(from, p));
+  const theta12 = toRad(initialBearing(from, to));
+
+  const sin = Math.sin(delta13) * Math.sin(theta13 - theta12);
+  // Clamp before asin: rounding can push the product a hair outside [-1, 1]
+  // and NaN would propagate silently into the readout.
+  return Math.asin(Math.max(-1, Math.min(1, sin))) * EARTH_RADIUS_M;
+}
+
+/**
  * Convert a magnetic compass heading to a true bearing.
  *
  * Declination is positive east: it is the angle from true north round to
@@ -140,6 +160,36 @@ export function formatBearing(deg) {
   // Round first, then wrap: 359.7 must render as 000, not 360.
   const whole = Math.round(deg) % 360;
   return `${String((whole + 360) % 360).padStart(3, '0')}°`;
+}
+
+/**
+ * Format a speed for the readouts, following the same unit setting as
+ * distance.
+ *
+ * The minus sign is U+2212, not a hyphen: at forty pixels a hyphen is short
+ * enough to read as a dash, and VMC on a losing tack must be unmistakably
+ * negative.
+ */
+export function formatSpeed(mps, units = 'metric') {
+  const value = units === 'nautical' ? (mps * 3600) / METRES_PER_NM : mps * 3.6;
+  const unit = units === 'nautical' ? 'kn' : 'km/h';
+  return `${value.toFixed(1).replace('-', '−')} ${unit}`;
+}
+
+/**
+ * Format a duration as `h:mm`.
+ *
+ * Capped at `9:59+`. Becalmed, VMC falls towards zero and the quotient runs
+ * to tens of hours — a figure both too wide for the column and a fiction,
+ * since VMC will not hold that long. The cap stays distinguishable from the
+ * em dash the panels draw when there is no data at all.
+ */
+export function formatDuration(seconds) {
+  // Round to minutes first. Rounding after the cap test would let 9:59:59
+  // through and then print it as "10:00".
+  const minutes = Math.round(seconds / 60);
+  if (minutes >= 600) return '9:59+';
+  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
 }
 
 /**

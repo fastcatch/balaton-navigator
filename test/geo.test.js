@@ -10,6 +10,9 @@ import {
   formatDistance,
   formatBearing,
   simplify,
+  crossTrackDistance,
+  formatSpeed,
+  formatDuration,
   EARTH_RADIUS_M,
 } from '../js/core/geo.js';
 
@@ -390,4 +393,72 @@ test('simplify preserves the shape of a right-angle turn', () => {
   const out = simplify(leg, 50);
   assert.equal(out.length, 3);
   assert.deepEqual(out[1], { lat: 46.92, lon: 17.9 });
+});
+
+// ---------------------------------------------------------------------------
+// Cross-track error
+// ---------------------------------------------------------------------------
+
+// A due-north track up the middle of the lake, and points either side of it.
+const XTE_FROM = { lat: 46.90, lon: 17.90 };
+const XTE_TO = { lat: 47.00, lon: 17.90 };
+
+test('a point on the track has no cross-track error', () => {
+  const onLine = { lat: 46.95, lon: 17.90 };
+  assert.ok(
+    Math.abs(crossTrackDistance(XTE_FROM, XTE_TO, onLine)) < 1,
+    'expected ~0 metres on the line'
+  );
+});
+
+test('cross-track error is positive to starboard of the track', () => {
+  // Heading north, east is starboard.
+  const east = { lat: 46.95, lon: 17.91 };
+  assert.ok(crossTrackDistance(XTE_FROM, XTE_TO, east) > 0, 'east of a northward track is starboard');
+
+  const west = { lat: 46.95, lon: 17.89 };
+  assert.ok(crossTrackDistance(XTE_FROM, XTE_TO, west) < 0, 'west of a northward track is port');
+});
+
+test('cross-track error measures the perpendicular distance', () => {
+  // 0.01 degrees of longitude at 46.95 N is 111194.93 * cos(46.95) * 0.01,
+  // which is about 759 m.
+  const east = { lat: 46.95, lon: 17.91 };
+  const xte = crossTrackDistance(XTE_FROM, XTE_TO, east);
+  assert.ok(Math.abs(xte - 759) < 15, `expected ~759 m, got ${xte}`);
+});
+
+test('the track is not clipped to the segment', () => {
+  // Past the far end, still a metre off the line extended onward. A boat
+  // overstanding a mark needs to see this, so it must not read as zero.
+  const beyond = { lat: 47.05, lon: 17.91 };
+  assert.ok(crossTrackDistance(XTE_FROM, XTE_TO, beyond) > 100);
+});
+
+// ---------------------------------------------------------------------------
+// Formatters
+// ---------------------------------------------------------------------------
+
+test('speed is formatted in the chosen unit system', () => {
+  // 5 kn is 2.5722 m/s.
+  assert.equal(formatSpeed(2.5722, 'nautical'), '5.0 kn');
+  assert.equal(formatSpeed(2.7778, 'metric'), '10.0 km/h');
+});
+
+test('a negative speed keeps its sign', () => {
+  // VMC goes negative on a losing tack, and that sign is the whole point.
+  assert.equal(formatSpeed(-0.5144, 'nautical'), '−1.0 kn');
+});
+
+test('durations are formatted as hours and minutes', () => {
+  assert.equal(formatDuration(0), '0:00');
+  assert.equal(formatDuration(18 * 60), '0:18');
+  assert.equal(formatDuration(84 * 60), '1:24');
+});
+
+test('a duration beyond ten hours is capped rather than widening the column', () => {
+  assert.equal(formatDuration(10 * 3600), '9:59+');
+  // Rounding must not push 9:59:59 over the cap and print "10:00".
+  assert.equal(formatDuration(10 * 3600 - 1), '9:59+');
+  assert.equal(formatDuration(9 * 3600 + 58 * 60), '9:58');
 });
