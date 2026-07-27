@@ -53,6 +53,7 @@ const SHELL = [
   './js/core/gpx.js',
   './js/core/model.js',
   './js/core/seeds.js',
+  './js/core/instruments.js',
   './js/seeds.js',
   // Precached so the shipped routes are available on a first launch with no
   // network — which is exactly the morning-of-the-race case.
