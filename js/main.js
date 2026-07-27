@@ -76,6 +76,11 @@ const state = {
 let map;
 let tracker;
 let views;
+// The pager's own return value, kept so renderLive() can ask which page is
+// showing. Without this main.js had no way to know, and rebuilt the data
+// page's DOM on every compass reading — up to 60 Hz on iOS — even while it
+// sat behind display:none.
+let pager;
 
 // ---------------------------------------------------------------------------
 // Persistence helpers
@@ -238,7 +243,16 @@ function renderLive() {
   });
 
   renderNavPanel($('navpanel'), { nav, cog: state.cog, instruments, settings: state.settings });
-  renderDataPanel($('datapanel'), { instruments, cog: state.cog, settings: state.settings });
+
+  // Only rebuilt while actually showing: the compass drives this function at
+  // up to 60 Hz on iOS with no throttle, and rebuilding a display:none page's
+  // DOM on every one of those readings is pure waste. Populated on arrival
+  // instead by the pager's onChange, below, rather than waiting for the next
+  // GPS fix.
+  if (pager?.page === 'data') {
+    renderDataPanel($('datapanel'), { instruments, cog: state.cog, settings: state.settings });
+  }
+
   renderBanners();
   renderMapLayers();
 
@@ -568,10 +582,20 @@ async function boot() {
 
   // Swipe surfaces are the two panels, never the map: Leaflet owns
   // horizontal drags there for panning.
-  createPager({
+  //
+  // The handle is kept (module-level `pager`, not discarded) so renderLive()
+  // can ask which page is showing before rebuilding the data page's DOM.
+  pager = createPager({
     surfaces: [$('navpanel'), $('datapanel')],
     dots: $('pagedots'),
-    onChange: (page) => $('datapanel').classList.toggle('is-hidden', page !== 'data'),
+    onChange: (page) => {
+      $('datapanel').classList.toggle('is-hidden', page !== 'data');
+      // Populate on arrival rather than waiting for the next GPS fix — the
+      // guard in renderLive() means nothing has been drawing into a hidden
+      // data page, so it would otherwise show whatever was last rendered
+      // before the swipe, or nothing at all on the very first visit.
+      if (page === 'data') renderLive();
+    },
   });
 
   tracker = createTracker({ onChange: () => {} });
