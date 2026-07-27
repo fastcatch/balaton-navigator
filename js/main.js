@@ -33,6 +33,7 @@ import { renderNavPanel } from './ui/navpanel.js';
 import { renderRoutesView } from './ui/routes.js';
 import { renderTracksView } from './ui/tracks.js';
 import { renderSettings } from './ui/settings.js';
+import { createPager } from './ui/pager.js';
 
 /** Accuracy above which the fix is flagged as untrustworthy (spec 8). */
 const POOR_ACCURACY_M = 100;
@@ -531,6 +532,14 @@ async function boot() {
   });
 
   map.onZoom(() => renderMapLayers());
+
+  // Swipe surfaces are the two panels, never the map: Leaflet owns
+  // horizontal drags there for panning.
+  createPager({
+    surfaces: [$('navpanel'), $('datapanel')],
+    dots: $('pagedots'),
+    onChange: (page) => $('datapanel').classList.toggle('is-hidden', page !== 'data'),
+  });
 
   tracker = createTracker({ onChange: () => {} });
 

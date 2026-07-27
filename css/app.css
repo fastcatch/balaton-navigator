@@ -153,6 +153,11 @@ button:disabled { opacity: 0.4; }
   border-top: 1px solid #1c3a54;
   border-bottom: 1px solid #1c3a54;
   padding: 10px 12px;
+  /* Vertical gestures still belong to the browser; horizontal ones are the
+     page turn. Without this Chrome on Android may start its own pan and fire
+     pointercancel mid-swipe, which reads as the gesture randomly not
+     working. */
+  touch-action: pan-y;
 }
 
 .nav-grid {
@@ -551,3 +556,65 @@ button:disabled { opacity: 0.4; }
 }
 
 .is-hidden { display: none !important; }
+
+/* --- Data page ------------------------------------------------------ *
+ *
+ * Overlays the map rather than replacing it. Leaflet is never hidden, so it
+ * keeps its size and needs no invalidateSize() on the way back — and at
+ * z-index 600 this also covers .map-buttons and .add-hint (both 500), which
+ * would otherwise float over the figures.
+ */
+.datapanel {
+  position: absolute;
+  inset: 0;
+  z-index: 600;
+  background: #000;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  touch-action: pan-y; /* same reason as .navpanel */
+}
+
+/* --- Page dots ------------------------------------------------------ *
+ *
+ * Overlaid on the map area rather than given a row of their own: a strip
+ * under the action bar would cost the chart height on every screen, for an
+ * indicator that is two dots. z-index 700 puts them above the data page, so
+ * they show on both.
+ */
+#pagedots {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 700;
+  display: flex;
+  /* Only the buttons take taps, so the gap between them still pans the map. */
+  pointer-events: none;
+}
+
+/* The visible dot is 8px but the target is full size. This is the only
+   affordance saying a second page exists, and it has to be usable in
+   gloves by someone who cannot land the swipe. */
+.pagedot {
+  pointer-events: auto;
+  width: var(--tap);
+  min-height: var(--tap);
+  padding: 0;
+  background: none;
+  border: none;
+  display: grid;
+  place-items: center;
+}
+.pagedot:active { background: none; }
+.pagedot::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--parchment-dim);
+  opacity: 0.45;
+}
+.pagedot.is-current::after { background: var(--brass-bright); opacity: 1; }

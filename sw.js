@@ -64,6 +64,7 @@ const SHELL = [
   './js/ui/routes.js',
   './js/ui/tracks.js',
   './js/ui/settings.js',
+  './js/ui/pager.js',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
