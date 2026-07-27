@@ -16,9 +16,29 @@
  * ---------------------------------------------------------------------------
  */
 
-const VERSION = 'v6';
-const SHELL_CACHE = `balaton-shell-${VERSION}`;
-const TILE_CACHE = `balaton-tiles-${VERSION}`;
+/**
+ * The two caches are versioned independently, and must stay that way.
+ *
+ * Bump SHELL_VERSION on any change to the files in SHELL below. `activate`
+ * deletes every `balaton-` cache that is not one of the two current names, so
+ * a shared constant would throw away the whole tile cache every time a line
+ * of CSS changed — and those tiles can only be refilled by browsing the lake
+ * again with a data connection, which is exactly what nobody has on the
+ * water.
+ *
+ * Bumping the shell is not optional housekeeping: `cache.addAll` fetches
+ * through the HTTP cache, and GitHub Pages serves the shell with a ten-minute
+ * max-age. Reusing the cache name after a deploy can therefore re-store the
+ * stale copy it was meant to replace, which presents as the new build simply
+ * not being there.
+ *
+ * TILE_VERSION exists only so the tile cache can be discarded deliberately —
+ * a change to the tile key format or host list. Routine deploys leave it be.
+ */
+const SHELL_VERSION = 'v7';
+const TILE_VERSION = 'v6';
+const SHELL_CACHE = `balaton-shell-${SHELL_VERSION}`;
+const TILE_CACHE = `balaton-tiles-${TILE_VERSION}`;
 
 /** Roughly 40 MB of tiles. Enough for the whole lake at working zooms. */
 const TILE_CACHE_LIMIT = 2000;
