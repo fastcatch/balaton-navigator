@@ -119,7 +119,17 @@ button:disabled { opacity: 0.4; }
 .gps-dot--fair { background: var(--warn); }
 .gps-dot--poor { background: var(--danger); }
 
-#map-wrap { position: relative; flex: 1; min-height: 0; }
+/* Leaflet's own .leaflet-top/.leaflet-bottom controls are position:absolute
+   at z-index 1000 — set by vendor/leaflet/leaflet.css, not by us. Without a
+   stacking context here they compete at the ROOT stacking context, where
+   1000 beats .datapanel's 600: the zoom control paints over VMC and the
+   attribution over Hátra, and since .leaflet-control keeps pointer-events,
+   taps there silently zoom the invisible map underneath. `isolation: isolate`
+   contains every Leaflet z-index inside #map-wrap so it can never climb above
+   a sibling. Deliberately not solved by raising .datapanel above 1000: .view
+   (the full-screen list views) is a position:fixed sibling of #map-wrap at
+   1000 and must stay on top of everything, including the data page. */
+#map-wrap { position: relative; flex: 1; min-height: 0; isolation: isolate; }
 #map { position: absolute; inset: 0; background: #0a2036; }
 
 /* Map overlay controls, stacked bottom-right. "Közép" sits lowest because it
