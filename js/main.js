@@ -39,6 +39,8 @@ import { createPager } from './ui/pager.js';
 
 /** Accuracy above which the fix is flagged as untrustworthy (spec 8). */
 const POOR_ACCURACY_M = 100;
+/** Accuracy at or below which the fix is as good as this app ever needs. */
+const GOOD_ACCURACY_M = 20;
 
 /**
  * How much fix history to keep for the COG filter.
@@ -194,6 +196,25 @@ function renderMapLayers() {
 }
 
 /**
+ * Fix quality as a coarse band, for the header dot.
+ *
+ * A number would need reading; this only needs seeing. It does not replace
+ * the poor-accuracy banner — it is the always-on version of it, so a figure
+ * that looks wrong has an explanation without waiting for a threshold.
+ *
+ * A fix reporting no accuracy at all counts as 'fair': we have a position
+ * and no specific reason to doubt it, which is the same call
+ * `isAccuracyUsable` makes in navigation.js.
+ */
+function gpsQuality(position) {
+  if (!position) return 'none';
+  if (position.accuracy == null) return 'fair';
+  if (position.accuracy <= GOOD_ACCURACY_M) return 'good';
+  if (position.accuracy <= POOR_ACCURACY_M) return 'fair';
+  return 'poor';
+}
+
+/**
  * Everything that changes on a GPS fix or a compass reading.
  *
  * Deliberately does NOT rebuild the open list views — see `render()`.
@@ -232,6 +253,7 @@ function renderLive() {
   $('btn-add').classList.toggle('is-active', state.addMode);
   $('btn-record').classList.toggle('is-recording', tracker.isRecording);
   $('btn-record').textContent = tracker.isRecording ? '■ Állj' : '● Rögzít';
+  $('gps-dot').className = `gps-dot gps-dot--${gpsQuality(state.position)}`;
 }
 
 /**

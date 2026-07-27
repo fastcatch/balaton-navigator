@@ -104,6 +104,21 @@ button:disabled { opacity: 0.4; }
   white-space: nowrap;
 }
 
+/* Visible on both pages, because a figure that looks wrong should carry its
+   own explanation. align-self overrides the header's baseline alignment,
+   which a bare dot has no sensible baseline for. */
+.gps-dot {
+  flex: none;
+  align-self: center;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #55606b;
+}
+.gps-dot--good { background: #4caf6d; }
+.gps-dot--fair { background: var(--warn); }
+.gps-dot--poor { background: var(--danger); }
+
 #map-wrap { position: relative; flex: 1; min-height: 0; }
 #map { position: absolute; inset: 0; background: #0a2036; }
 
