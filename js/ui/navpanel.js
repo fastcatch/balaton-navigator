@@ -11,8 +11,8 @@
  * boat's axis, which is exactly what is impractical while racing.
  */
 
-import { el, replace } from './dom.js';
-import { formatBearing, formatDistance, relativeBearing } from '../core/geo.js';
+import { el, figure, replace } from './dom.js';
+import { formatBearing, formatDistance, formatDuration, relativeBearing } from '../core/geo.js';
 import { chevronCount } from '../core/cog.js';
 
 /** Full-scale deflection of the deviation tape, in degrees either side. */
@@ -28,12 +28,6 @@ const COG_NOTE = {
   slow: 'Túl lassú a haladási irányhoz',
   nofix: 'Nincs még elég GPS-adat a haladási irányhoz',
 };
-
-const figure = (label, value) =>
-  el('div', { className: 'nav-figure' }, [
-    el('div', { className: 'nav-label', textContent: label }),
-    el('div', { className: 'nav-value', textContent: value }),
-  ]);
 
 /**
  * How many chevrons were drawn last time.
@@ -105,7 +99,7 @@ function steerBlock(nav, cog) {
   }, [turnReadout(rel), deviationTape(rel)]);
 }
 
-export function renderNavPanel(container, { nav, cog, settings }) {
+export function renderNavPanel(container, { nav, cog, instruments, settings }) {
   // Nothing to steer towards. Say so plainly rather than showing zeroes,
   // which would read as a real bearing (spec 8).
   if (nav.routeComplete) {
@@ -124,7 +118,13 @@ export function renderNavPanel(container, { nav, cog, settings }) {
   return replace(container, [
     el('div', { className: 'nav-grid' }, [
       figure('Irányszög', formatBearing(nav.bearing)),
-      figure('Távolság', formatDistance(nav.distance, settings.units)),
+      // Time to go rides with the distance because it is the same question
+      // asked in the other unit. It is derived from VMC, so it means "at
+      // this rate of closing" — and reads as an em dash when the boat is
+      // sailing away, which has no arrival time at all.
+      figure('Távolság', formatDistance(nav.distance, settings.units), {
+        sub: instruments.ttgSeconds == null ? '—' : formatDuration(instruments.ttgSeconds),
+      }),
     ]),
     steerBlock(nav, cog),
     el('div', { className: 'nav-target', textContent: `Cél: ${nav.targetName}` }),

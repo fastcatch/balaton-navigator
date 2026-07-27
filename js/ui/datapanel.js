@@ -9,7 +9,7 @@
  */
 
 import { el, figure, replace } from './dom.js';
-import { formatBearing, formatDistance, formatDuration, formatSpeed } from '../core/geo.js';
+import { formatBearing, formatDistance, formatSpeed } from '../core/geo.js';
 
 /** An em dash, never a zero: a missing figure must not read as a measurement. */
 const NONE = '—';
