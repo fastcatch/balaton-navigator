@@ -261,7 +261,24 @@ button:disabled { opacity: 0.4; }
  * every render, so a transition would have nothing persistent to animate.
  * Smoothing belongs in the COG damping setting, not in CSS.
  */
-.nav-steer { margin-top: 12px; }
+/* Height reserved whether or not there is a course to steer by.
+ *
+ * The turn readout is about 100px; the "no course yet" note is one line. Left
+ * to size themselves, swapping one for the other shifted the target line, the
+ * action bar and the map above by roughly 68px — and gating the course on
+ * reported speed turned that from a startup one-off into something that
+ * happens every time the boat slows. A panel that jumps while being read is
+ * worse than either state it jumps between. */
+.nav-steer-slot {
+  margin-top: 12px;
+  /* Exactly what the turn readout occupies: 56px of chevrons (line-height 1)
+     plus the tape's 10px margin and 24px box. Measured rather than rounded
+     up, because every pixel here is taken from the chart. */
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 
 /* An unsteady course still shows, dimmed: mid-tack the number is real but
    not yet settled, and hiding it would make the panel jump. Also reused by
@@ -328,8 +345,9 @@ button:disabled { opacity: 0.4; }
   background: var(--warn);
 }
 
+/* No margin: .nav-steer-slot owns the spacing now, and centres this in the
+   space the turn readout would have occupied. */
 .nav-cog-note {
-  margin-top: 12px;
   font-size: 16px;
   font-weight: 600;
   color: var(--parchment-dim);

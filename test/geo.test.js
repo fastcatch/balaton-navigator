@@ -8,6 +8,8 @@ import {
   destinationPoint,
   magneticToTrue,
   formatDistance,
+  formatDistanceValue,
+  distanceUnit,
   formatBearing,
   simplify,
   crossTrackDistance,
@@ -505,4 +507,27 @@ test('the combined formatter is still the value and the unit', () => {
   for (const units of ['metric', 'nautical']) {
     assert.equal(formatSpeed(2.5722, units), `${formatSpeedValue(2.5722, units)} ${speedUnit(units)}`);
   }
+});
+
+test('a distance splits into a value and a unit that agree', () => {
+  // The navpanel prints the unit in its caption and the value below it, so a
+  // threshold disagreement would put "850" under a caption reading KM.
+  for (const units of ['metric', 'nautical']) {
+    for (const m of [0, 1, 499, 500, 926, 999, 1000, 1001, 105150]) {
+      assert.equal(
+        formatDistance(m, units),
+        `${formatDistanceValue(m, units)} ${distanceUnit(m, units)}`,
+        `disagreement at ${m}m in ${units}`
+      );
+    }
+  }
+});
+
+test('the distance unit switches with magnitude, not with the setting', () => {
+  // Unlike a speed unit, this is why the caption has to be rebuilt per render.
+  assert.equal(distanceUnit(850, 'metric'), 'm');
+  assert.equal(distanceUnit(1200, 'metric'), 'km');
+  // Half a nautical mile is the nautical threshold, not a kilometre.
+  assert.equal(distanceUnit(900, 'nautical'), 'm');
+  assert.equal(distanceUnit(1000, 'nautical'), 'NM');
 });

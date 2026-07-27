@@ -12,7 +12,13 @@
  */
 
 import { el, figure, replace } from './dom.js';
-import { formatBearing, formatDistance, formatDuration, relativeBearing } from '../core/geo.js';
+import {
+  distanceUnit,
+  formatBearing,
+  formatDistanceValue,
+  formatDuration,
+  relativeBearing,
+} from '../core/geo.js';
 import { chevronCount } from '../core/cog.js';
 
 /** Full-scale deflection of the deviation tape, in degrees either side. */
@@ -88,15 +94,26 @@ function deviationTape(rel) {
  * settled yet" without taking the number away.
  */
 function steerBlock(nav, cog) {
+  // Always a fixed-height slot, whatever goes in it.
+  //
+  // The turn readout is about 100px and the "no course yet" note is a single
+  // line, so swapping one for the other moved everything below it — and the
+  // map above it — by roughly 68px. Gating the course on reported speed made
+  // that swap common at low speed rather than a one-off at startup, and a
+  // panel that jumps while you are trying to read it is worse than either
+  // state it jumps between. Same reasoning that keeps an unsteady course
+  // dimmed rather than hidden; this just applies it to the missing case too.
+  const slot = (child) => el('div', { className: 'nav-steer-slot' }, [child]);
+
   if (cog.cog == null) {
     const note = COG_NOTE[cog.status];
-    return note ? el('div', { className: 'nav-cog-note', textContent: note }) : null;
+    return slot(note ? el('div', { className: 'nav-cog-note', textContent: note }) : null);
   }
 
   const rel = relativeBearing(nav.bearing, cog.cog);
-  return el('div', {
+  return slot(el('div', {
     className: `nav-steer${cog.status === 'unsteady' ? ' is-unsteady' : ''}`,
-  }, [turnReadout(rel), deviationTape(rel)]);
+  }, [turnReadout(rel), deviationTape(rel)]));
 }
 
 export function renderNavPanel(container, { nav, cog, instruments, settings }) {
@@ -128,9 +145,18 @@ export function renderNavPanel(container, { nav, cog, instruments, settings }) {
       // clock time, and the 11px uppercase caption already exists, so this
       // costs zero extra height — which was the entire reason IDŐ went
       // inline instead of onto its own row.
-      figure('Távolság · Idő', formatDistance(nav.distance, settings.units), {
-        sub: instruments.ttgSeconds == null ? '—' : formatDuration(instruments.ttgSeconds),
-      }),
+      // The unit rides in the caption too, so the figure is a bare number.
+      // Unlike SOG's, this unit is NOT fixed by the setting — it switches from
+      // km to m as you close on a mark — so the caption changes with it. That
+      // is a real cost, accepted deliberately: it is the only way to fit
+      // "105.15" and a time in one column without shrinking the figure, and
+      // both parts come from one threshold decision in geo.js so they can
+      // never contradict each other.
+      figure(
+        `Távolság · ${distanceUnit(nav.distance, settings.units)} · Idő`,
+        formatDistanceValue(nav.distance, settings.units),
+        { sub: instruments.ttgSeconds == null ? '—' : formatDuration(instruments.ttgSeconds) }
+      ),
     ]),
     steerBlock(nav, cog),
     el('div', { className: 'nav-target', textContent: `Cél: ${nav.targetName}` }),

@@ -157,20 +157,45 @@ export function relativeBearing(targetBearing, heading) {
 }
 
 /**
- * Format a distance for the navigation panel.
+ * A distance split into the number and the unit it is expressed in.
+ *
+ * Both come out of ONE decision about which side of the threshold the
+ * distance falls on. That is the whole point of the function: the navigation
+ * panel prints the unit in its caption and the value below it, so if the two
+ * were derived separately a rounding difference at the boundary would put
+ * "850" under a caption reading KM. Everything that needs either part goes
+ * through here.
  *
  * Resolves the spec's contradiction between section 6.2 (metric format) and
  * section 6.4 (nautical toggle) into one rule driven by the setting.
  */
-export function formatDistance(metres, units = 'metric') {
+function distanceParts(metres, units = 'metric') {
   if (units === 'nautical') {
     const nm = metres / METRES_PER_NM;
     // Below half a mile, metres are easier to act on than a decimal fraction.
-    if (nm < 0.5) return `${Math.round(metres)} m`;
-    return `${nm.toFixed(2)} NM`;
+    if (nm < 0.5) return { value: String(Math.round(metres)), unit: 'm' };
+    return { value: nm.toFixed(2), unit: 'NM' };
   }
-  if (metres < 1000) return `${Math.round(metres)} m`;
-  return `${(metres / 1000).toFixed(2)} km`;
+  if (metres < 1000) return { value: String(Math.round(metres)), unit: 'm' };
+  return { value: (metres / 1000).toFixed(2), unit: 'km' };
+}
+
+/**
+ * The unit a distance will render in — `m`, `km` or `NM`.
+ *
+ * Unlike a speed unit, this is NOT fixed by the setting: it changes with the
+ * value as you close on a mark. A caption using it has to be re-read, which
+ * is the cost of taking the unit out of the figure.
+ */
+export const distanceUnit = (metres, units) => distanceParts(metres, units).unit;
+
+/** A distance as a bare number, in whatever unit `distanceUnit` reports. */
+export const formatDistanceValue = (metres, units) => distanceParts(metres, units).value;
+
+/** A distance with its unit, e.g. `1.24 NM`. */
+export function formatDistance(metres, units = 'metric') {
+  const { value, unit } = distanceParts(metres, units);
+  return `${value} ${unit}`;
 }
 
 /** Format a bearing as three zero-padded degrees, e.g. `047°`. */
