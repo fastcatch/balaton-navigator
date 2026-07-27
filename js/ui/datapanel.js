@@ -63,7 +63,7 @@ export function renderDataPanel(container, { instruments, cog, settings }) {
     ]),
     el('div', { className: 'nav-grid' }, [
       smallFigure('XTE', xteText(xteM, units)),
-      smallFigure('Hátra', remainingM == null ? NONE : formatDistance(remainingM, units)),
+      smallFigure('Hátralévő', remainingM == null ? NONE : formatDistance(remainingM, units)),
     ]),
   ]);
 }
