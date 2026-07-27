@@ -132,7 +132,10 @@ export function computeSog(samples, { windowMs, nowT }) {
   if (!Array.isArray(samples) || samples.length < 2) return null;
   if (nowT - samples[samples.length - 1].t > STALE_MS) return null;
 
-  // Build pairs: each pair is [earlier, later].
+  // Build pairs WITHOUT their distance yet. Most fixes report `speed`, so the
+  // Doppler branch below is the common case and never reads it — computing a
+  // haversine for every pair up front, only to discard the answer every time
+  // the device reports speed, was 14 wasted calls per render for nothing.
   const pairs = [];
   for (let i = 1; i < samples.length; i++) {
     const dt = samples[i].t - samples[i - 1].t;
@@ -141,7 +144,6 @@ export function computeSog(samples, { windowMs, nowT }) {
     pairs.push({
       a: samples[i - 1],
       b: samples[i],
-      distance: haversine(samples[i - 1], samples[i]),
       dt,
       t: samples[i].t, // Filter by the later sample's timestamp
     });
@@ -168,16 +170,18 @@ export function computeSog(samples, { windowMs, nowT }) {
   }
   participating.sort((a, b) => a.t - b.t);
 
-  // Prefer device speeds from participating samples.
+  // Prefer device speeds from participating samples. The normal case, and the
+  // one that never needs a single haversine.
   const reported = participating.filter((s) => Number.isFinite(s.speed));
   if (reported.length > 0) {
     return reported.reduce((sum, s) => sum + s.speed, 0) / reported.length;
   }
 
-  // Fall back to distance over time across used pairs.
+  // Fall back to distance over time across used pairs — the only branch that
+  // actually reads a distance, so it is the only branch that computes one.
   let distance = 0;
   for (const pair of used) {
-    distance += pair.distance;
+    distance += haversine(pair.a, pair.b);
   }
   const seconds = (participating[participating.length - 1].t - participating[0].t) / 1000;
   return seconds > 0 ? distance / seconds : null;
