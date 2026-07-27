@@ -81,6 +81,11 @@ export function createMap(elementId, { onMapClick, onWaypointClick, onFollowChan
     tap: false, // Leaflet's tap emulation misfires on modern iOS
   }).fitBounds(BALATON_VIEW);
 
+  // Leaflet's own "Leaflet" credit is a courtesy under its BSD licence, not a
+  // requirement. Dropped because the strip has to hold the OSM and OpenSeaMap
+  // credits, which ARE required and must stay legible on a phone.
+  map.attributionControl.setPrefix('');
+
   L.control.zoom({ position: 'topright' }).addTo(map);
 
   L.tileLayer(OSM_URL, {

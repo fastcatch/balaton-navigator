@@ -161,7 +161,9 @@ button:disabled { opacity: 0.4; }
 .add-hint {
   position: absolute;
   left: 50%;
-  top: 12px;
+  /* Below the page dots, which own the top of the map now. Both are centred,
+     so at the old 12px they landed on each other. */
+  top: 52px;
   transform: translateX(-50%);
   z-index: 500;
   background: var(--brass);
@@ -195,6 +197,22 @@ button:disabled { opacity: 0.4; }
   align-items: baseline;
   gap: 12px;
 }
+
+/* The bearing column only ever holds three digits and a degree sign, so an
+   even split hands it about eighty pixels it cannot use while the distance —
+   which carries a unit, and now a time beside it — runs out of room and wraps
+   mid-figure. On a 390px phone `1fr 1fr` gives each column 177px; "1.24 NM
+   0:18" needs roughly 208px and "105.15 km" alone needs 185px, so the wrap was
+   not an edge case but the normal state. Sizing the first column to its
+   content gives the second everything left over.
+
+   Scoped to the navpanel: the data page pairs SOG with VMC, two figures of
+   like kind that should stay visually parallel. */
+.navpanel .nav-grid { grid-template-columns: auto 1fr; }
+
+/* A figure split across two lines cannot be read at a glance, which is the
+   only thing this panel is for. Better to size the columns so it fits. */
+.navpanel .nav-value { white-space: nowrap; }
 
 .nav-figure { min-width: 0; }
 .nav-label {
@@ -640,14 +658,25 @@ button:disabled { opacity: 0.4; }
  * indicator that is two dots. z-index 1200 puts them above .datapanel's
  * 1100 (itself raised above Leaflet's controls, see above), so the dots
  * keep showing on both pages instead of being buried under the data page.
+ *
+ * TOP centre, not bottom. The bottom strip belongs to the licence
+ * attribution, which OSM's tile usage policy requires to stay clearly
+ * visible on the map and explicitly forbids putting behind other UI. The
+ * dots sat on top of it.
+ *
+ * The pill is not decoration: unlike every other overlay here the dots sit
+ * over map tiles that may be pale fields or dark water, and a dim dot on a
+ * light tile is no indicator at all.
  */
 #pagedots {
   position: absolute;
   left: 50%;
-  bottom: 0;
+  top: 8px;
   transform: translateX(-50%);
   z-index: 1200;
   display: flex;
+  background: rgba(11, 31, 51, 0.92);
+  border-radius: 999px;
   /* Only the buttons take taps, so the gap between them still pans the map. */
   pointer-events: none;
 }
@@ -657,21 +686,33 @@ button:disabled { opacity: 0.4; }
    gloves by someone who cannot land the swipe. */
 .pagedot {
   pointer-events: auto;
-  width: var(--tap);
-  min-height: var(--tap);
+  width: 44px;
+  /* Shorter than --tap: this rides over the chart, and a 48px pill at the top
+     of the map is a bite out of the thing you are trying to look at. 36 is
+     still a target a wet thumb can find. */
+  min-height: 36px;
   padding: 0;
   background: none;
   border: none;
+  border-radius: 999px;
   display: grid;
   place-items: center;
 }
 .pagedot:active { background: none; }
+
+/* The browser's default ring fires on a tap and then sits there, drawing a
+   box around the map. Keyboard users still get it. */
+.pagedot:focus { outline: none; }
+.pagedot:focus-visible { outline: 2px solid var(--brass-bright); outline-offset: -3px; }
+
 .pagedot::after {
   content: '';
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--parchment-dim);
-  opacity: 0.45;
+  background: var(--parchment);
+  /* Against the pill rather than the map now, so this only has to read as
+     "not the current page" — but it still has to be visible at all. */
+  opacity: 0.5;
 }
 .pagedot.is-current::after { background: var(--brass-bright); opacity: 1; }
