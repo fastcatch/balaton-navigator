@@ -131,7 +131,7 @@ button:disabled { opacity: 0.4; }
    isolate` does not settle that internal contest; it stops these
    deliberately-raised values from escaping #map-wrap into the ROOT stacking
    context, where they would otherwise beat .view (the full-screen list
-   views, a position:fixed sibling of #map-wrap at z-index 1000) and paint
+   views, a position:fixed sibling of #app at z-index 1000) and paint
    over it instead of staying underneath. */
 #map-wrap { position: relative; flex: 1; min-height: 0; isolation: isolate; }
 #map { position: absolute; inset: 0; background: #0a2036; }
