@@ -9,7 +9,7 @@
  */
 
 import { el, figure, replace } from './dom.js';
-import { formatBearing, formatDistance, formatSpeed } from '../core/geo.js';
+import { formatBearing, formatDistance, formatSpeedValue, speedUnit } from '../core/geo.js';
 
 /** An em dash, never a zero: a missing figure must not read as a measurement. */
 const NONE = '—';
@@ -50,8 +50,13 @@ export function renderDataPanel(container, { instruments, cog, settings }) {
 
   return replace(container, [
     el('div', { className: 'nav-grid' }, [
-      figure('SOG', sogMps == null ? NONE : formatSpeed(sogMps, units)),
-      dim(figure('VMC', vmcMps == null ? NONE : formatSpeed(vmcMps, units))),
+      // Unit in the caption, bare number in the figure — how an instrument
+      // head lays this out, and here also a necessity: "−10.1 km/h" is about
+      // 203px against a 177px column, so the value wrapped mid-figure in
+      // metric. The unit is fixed by the setting, so it is read once rather
+      // than glanced at, and the number keeps its full size.
+      figure(`SOG · ${speedUnit(units)}`, sogMps == null ? NONE : formatSpeedValue(sogMps, units)),
+      dim(figure(`VMC · ${speedUnit(units)}`, vmcMps == null ? NONE : formatSpeedValue(vmcMps, units))),
     ]),
     el('div', { className: 'nav-grid' }, [
       dim(figure('COG', cog.cog == null ? NONE : formatBearing(cog.cog))),

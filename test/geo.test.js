@@ -12,6 +12,8 @@ import {
   simplify,
   crossTrackDistance,
   formatSpeed,
+  formatSpeedValue,
+  speedUnit,
   formatDuration,
   EARTH_RADIUS_M,
 } from '../js/core/geo.js';
@@ -482,4 +484,25 @@ test('a duration beyond ten hours is capped rather than widening the column', ()
   // Rounding must not push 9:59:59 over the cap and print "10:00".
   assert.equal(formatDuration(10 * 3600 - 1), '9:59+');
   assert.equal(formatDuration(9 * 3600 + 58 * 60), '9:58');
+});
+
+test('the speed unit can be taken alone, for a caption', () => {
+  assert.equal(speedUnit('nautical'), 'kn');
+  assert.equal(speedUnit('metric'), 'km/h');
+});
+
+test('a bare speed value carries no unit but keeps its sign', () => {
+  // The data page puts the unit in the caption so the number can stay at full
+  // size — "−10.1 km/h" overflowed its column, "−10.1" does not.
+  assert.equal(formatSpeedValue(2.5722, 'nautical'), '5.0');
+  assert.equal(formatSpeedValue(2.7778, 'metric'), '10.0');
+  assert.equal(formatSpeedValue(-0.5144, 'nautical'), '−1.0');
+});
+
+test('the combined formatter is still the value and the unit', () => {
+  // formatSpeed must stay consistent with its two halves, or a panel using
+  // one and a panel using the other would disagree.
+  for (const units of ['metric', 'nautical']) {
+    assert.equal(formatSpeed(2.5722, units), `${formatSpeedValue(2.5722, units)} ${speedUnit(units)}`);
+  }
 });

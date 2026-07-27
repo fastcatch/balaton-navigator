@@ -181,17 +181,36 @@ export function formatBearing(deg) {
 }
 
 /**
- * Format a speed for the readouts, following the same unit setting as
- * distance.
+ * Speed with its unit, following the same setting as distance.
+ *
+ * Panels tight enough that the unit costs them a line use `speedUnit` and
+ * `formatSpeedValue` separately instead.
+ */
+export function formatSpeed(mps, units = 'metric') {
+  return `${formatSpeedValue(mps, units)} ${speedUnit(units)}`;
+}
+
+/**
+ * The speed unit alone, for panels that put it in the caption.
+ *
+ * Splitting the unit off is what lets the data page print a bare number at
+ * full size: "−10.1 km/h" needs about 203px and the column is 177, so the
+ * figure wrapped. Unlike distance — which switches between m and km with the
+ * value — a speed unit is fixed by the setting, so it can sit in a label that
+ * is only read once.
+ */
+export const speedUnit = (units = 'metric') => (units === 'nautical' ? 'kn' : 'km/h');
+
+/**
+ * Speed as a bare number, no unit. One decimal, signed.
  *
  * The minus sign is U+2212, not a hyphen: at forty pixels a hyphen is short
  * enough to read as a dash, and VMC on a losing tack must be unmistakably
  * negative.
  */
-export function formatSpeed(mps, units = 'metric') {
+export function formatSpeedValue(mps, units = 'metric') {
   const value = units === 'nautical' ? (mps * 3600) / METRES_PER_NM : mps * 3.6;
-  const unit = units === 'nautical' ? 'kn' : 'km/h';
-  return `${value.toFixed(1).replace('-', '−')} ${unit}`;
+  return value.toFixed(1).replace('-', '−');
 }
 
 /**
