@@ -120,15 +120,19 @@ button:disabled { opacity: 0.4; }
 .gps-dot--poor { background: var(--danger); }
 
 /* Leaflet's own .leaflet-top/.leaflet-bottom controls are position:absolute
-   at z-index 1000 — set by vendor/leaflet/leaflet.css, not by us. Without a
-   stacking context here they compete at the ROOT stacking context, where
-   1000 beats .datapanel's 600: the zoom control paints over VMC and the
+   at z-index 1000 — set by vendor/leaflet/leaflet.css, not by us. They are
+   descendants of #map, which is position:absolute with no z-index of its
+   own, so #map forms no stacking context: its Leaflet children compete
+   directly inside #map-wrap's context against .datapanel and #pagedots.
+   .datapanel and #pagedots are therefore raised above 1000 (below) so they
+   win that contest — otherwise the zoom control paints over VMC and the
    attribution over Hátra, and since .leaflet-control keeps pointer-events,
-   taps there silently zoom the invisible map underneath. `isolation: isolate`
-   contains every Leaflet z-index inside #map-wrap so it can never climb above
-   a sibling. Deliberately not solved by raising .datapanel above 1000: .view
-   (the full-screen list views) is a position:fixed sibling of #map-wrap at
-   1000 and must stay on top of everything, including the data page. */
+   taps there silently zoom the invisible map underneath. `isolation:
+   isolate` does not settle that internal contest; it stops these
+   deliberately-raised values from escaping #map-wrap into the ROOT stacking
+   context, where they would otherwise beat .view (the full-screen list
+   views, a position:fixed sibling of #map-wrap at z-index 1000) and paint
+   over it instead of staying underneath. */
 #map-wrap { position: relative; flex: 1; min-height: 0; isolation: isolate; }
 #map { position: absolute; inset: 0; background: #0a2036; }
 
@@ -598,14 +602,18 @@ button:disabled { opacity: 0.4; }
 /* --- Data page ------------------------------------------------------ *
  *
  * Overlays the map rather than replacing it. Leaflet is never hidden, so it
- * keeps its size and needs no invalidateSize() on the way back — and at
- * z-index 600 this also covers .map-buttons and .add-hint (both 500), which
- * would otherwise float over the figures.
+ * keeps its size and needs no invalidateSize() on the way back. z-index
+ * 1100 clears .map-buttons and .add-hint (both 500) as a side effect, but
+ * the real target is Leaflet's own .leaflet-top/.leaflet-bottom controls at
+ * 1000 (vendor/leaflet/leaflet.css): they are descendants of #map inside
+ * this same stacking context (see the #map-wrap comment above), so without
+ * clearing 1000 the zoom control paints over VMC and the attribution strip
+ * over Hátra — and still eats the tap, silently zooming the map underneath.
  */
 .datapanel {
   position: absolute;
   inset: 0;
-  z-index: 600;
+  z-index: 1100;
   background: #000;
   padding: 16px 12px;
   display: flex;
@@ -629,15 +637,16 @@ button:disabled { opacity: 0.4; }
  *
  * Overlaid on the map area rather than given a row of their own: a strip
  * under the action bar would cost the chart height on every screen, for an
- * indicator that is two dots. z-index 700 puts them above the data page, so
- * they show on both.
+ * indicator that is two dots. z-index 1200 puts them above .datapanel's
+ * 1100 (itself raised above Leaflet's controls, see above), so the dots
+ * keep showing on both pages instead of being buried under the data page.
  */
 #pagedots {
   position: absolute;
   left: 50%;
   bottom: 0;
   transform: translateX(-50%);
-  z-index: 700;
+  z-index: 1200;
   display: flex;
   /* Only the buttons take taps, so the gap between them still pans the map. */
   pointer-events: none;
