@@ -683,6 +683,23 @@ async function boot() {
 
   // --- Go -----------------------------------------------------------
   watchPosition({ onPosition, onError: onPositionError });
+
+  // Nothing else drives a render when the data stops arriving.
+  //
+  // Every other render is triggered by a GPS fix or a compass reading, so if
+  // both stop the panel simply holds whatever it last drew — for as long as
+  // the app is open. That was survivable when the readout was a bearing and a
+  // distance, which change slowly and are wrong by metres. It is not
+  // survivable now: SOG would sit at six knots on a boat that has been
+  // drifting for a minute, and a TIMEOUT is deliberately swallowed (see
+  // onPositionError) so nothing else says otherwise.
+  //
+  // The filters already decay correctly — computeCog and computeSog both go
+  // null past STALE_MS, and the header dot follows. They just need something
+  // to ask them. One second matches the fix rate, so this adds no work on the
+  // common path where fixes are arriving anyway.
+  setInterval(renderLive, 1000);
+
   render();
 
   if ('serviceWorker' in navigator) {

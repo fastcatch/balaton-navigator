@@ -103,3 +103,19 @@ test('the pager is created exactly once', () => {
   const calls = source.split('createPager(').length - 1;
   assert.equal(calls, 1, 'createPager should be called once, in boot()');
 });
+
+test('the staleness timer uses the light render', () => {
+  // A timer is the only thing that decays the readout when fixes stop
+  // arriving — without it the panel holds a live-looking SOG on a drifting
+  // boat. But it must be renderLive: setInterval(render, ...) would rebuild
+  // every open list once a second, which is the same silent iPhone failure
+  // this file exists to prevent, except permanent rather than occasional.
+  assert.ok(
+    /setInterval\(\s*renderLive\s*,/.test(source),
+    'a timer must drive renderLive, or stale figures never decay'
+  );
+  assert.ok(
+    !/setInterval\(\s*render\s*,/.test(source),
+    'the timer must never call the full render'
+  );
+});
