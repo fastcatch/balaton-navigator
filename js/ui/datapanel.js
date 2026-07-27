@@ -34,13 +34,27 @@ export function renderDataPanel(container, { instruments, cog, settings }) {
   const { sogMps, vmcMps, xteM, remainingM } = instruments;
   const units = settings.units;
 
+  // Mid-tack, computeCog still returns a non-null cog with status
+  // 'unsteady' — a fix in the middle of a turn, or just noisy, but not yet
+  // settled. VMC rides on it (instruments.js gates on cog.cog != null), so
+  // both figures need the same tell. Dimmed, not blanked, matching
+  // .nav-steer.is-unsteady on the navpanel: blanking would make three
+  // figures vanish and reappear on every tack, which is the flicker that
+  // dimming was chosen to avoid there. SOG is unaffected — it needs no
+  // course at all.
+  const unsteady = cog.status === 'unsteady';
+  const dim = (node) => {
+    if (unsteady) node.classList.add('is-unsteady');
+    return node;
+  };
+
   return replace(container, [
     el('div', { className: 'nav-grid' }, [
       figure('SOG', sogMps == null ? NONE : formatSpeed(sogMps, units)),
-      figure('VMC', vmcMps == null ? NONE : formatSpeed(vmcMps, units)),
+      dim(figure('VMC', vmcMps == null ? NONE : formatSpeed(vmcMps, units))),
     ]),
     el('div', { className: 'nav-grid' }, [
-      figure('COG', cog.cog == null ? NONE : formatBearing(cog.cog)),
+      dim(figure('COG', cog.cog == null ? NONE : formatBearing(cog.cog))),
     ]),
     el('div', { className: 'nav-grid' }, [
       smallFigure('XTE', xteText(xteM, units)),

@@ -242,8 +242,13 @@ button:disabled { opacity: 0.4; }
 .nav-steer { margin-top: 12px; }
 
 /* An unsteady course still shows, dimmed: mid-tack the number is real but
-   not yet settled, and hiding it would make the panel jump. */
-.nav-steer.is-unsteady { opacity: 0.42; }
+   not yet settled, and hiding it would make the panel jump. Also reused by
+   the data page's COG and VMC figures (.nav-figure) — computeCog returns a
+   non-null cog while unsteady, so without this those two would sit at full
+   brightness, indistinguishable from a settled reading, while this very
+   panel dims the same condition a few rows down. Same 42% for both, so
+   "unsteady" reads as one convention rather than two competing ones. */
+.nav-steer.is-unsteady, .nav-figure.is-unsteady { opacity: 0.42; }
 
 .nav-turn {
   display: flex;
