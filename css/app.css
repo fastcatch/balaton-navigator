@@ -210,6 +210,13 @@ button:disabled { opacity: 0.4; }
    like kind that should stay visually parallel. */
 .navpanel .nav-grid { grid-template-columns: auto 1fr; }
 
+/* Distance and time flushed to the right edge, so the two figures sit at
+   opposite ends of the panel. With both left-aligned the slack pooled at the
+   right where nothing looks at it, and the two figures huddled together with
+   only the 12px gap between them — which read as cramped even though there
+   was room to spare. */
+.navpanel .nav-grid > :last-child { text-align: right; }
+
 /* A figure split across two lines cannot be read at a glance, which is the
    only thing this panel is for. Better to size the columns so it fits. */
 .navpanel .nav-value { white-space: nowrap; }
