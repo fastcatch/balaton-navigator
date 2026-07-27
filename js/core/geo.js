@@ -91,6 +91,15 @@ export function destinationPoint(from, bearingDeg, distanceM) {
 }
 
 /**
+ * Below this separation, `from` and `to` count as the same point rather than
+ * a track with a direction. A double-tap while placing waypoints lands two
+ * taps a metre or so apart at most on the map projection; no genuine pair of
+ * race-course waypoints is ever placed this close together, so the threshold
+ * cannot misfire on real data.
+ */
+const COINCIDENT_WAYPOINTS_M = 1;
+
+/**
  * Signed perpendicular distance in metres from `p` to the great circle
  * through `from` and `to`. Positive means `p` lies to starboard of the track.
  *
@@ -98,8 +107,17 @@ export function destinationPoint(from, bearingDeg, distanceM) {
  * value keeps reading as distance from the intended track extended onward,
  * which is what a boat overstanding a mark needs to see; clipping would
  * collapse it to zero exactly when the error is worth knowing.
+ *
+ * `null` when `from` and `to` coincide. `initialBearing` on two identical
+ * points is `atan2(0, 0) === 0`: the "track" would silently become due
+ * north, and every reading below would report the boat's raw east offset
+ * from `from` as if it were a real cross-track error — not a NaN, so nothing
+ * downstream would notice, just a confident wrong number. There is no track
+ * to be off here, so null is the honest answer.
  */
 export function crossTrackDistance(from, to, p) {
+  if (haversine(from, to) < COINCIDENT_WAYPOINTS_M) return null;
+
   const delta13 = haversine(from, p) / EARTH_RADIUS_M;
   const theta13 = toRad(initialBearing(from, p));
   const theta12 = toRad(initialBearing(from, to));

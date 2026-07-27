@@ -435,6 +435,27 @@ test('the track is not clipped to the segment', () => {
   assert.ok(crossTrackDistance(XTE_FROM, XTE_TO, beyond) > 100);
 });
 
+test('coincident waypoints have no cross-track error, not a confident wrong one', () => {
+  // A double-tap while placing a waypoint lands on effectively the same
+  // point. Without the guard, initialBearing(from, to) is atan2(0, 0) === 0:
+  // the "track" silently becomes due north, and the boat's raw east offset
+  // from the previous mark comes back as if it were a real XTE — not NaN, so
+  // nothing downstream would ever notice.
+  const same = { lat: 46.9, lon: 17.9 };
+  const alsoSame = { lat: 46.9, lon: 17.9 };
+  assert.equal(crossTrackDistance(same, alsoSame, { lat: 46.95, lon: 17.95 }), null);
+});
+
+test('waypoints a few metres apart still yield a real cross-track error', () => {
+  // The guard must not fire for two genuinely distinct waypoints — only for
+  // ones close enough to be the same tap.
+  const from = { lat: 46.9, lon: 17.9 };
+  const to = { lat: 46.90005, lon: 17.9 }; // ~5.6 m north
+  const east = { lat: 46.90002, lon: 17.901 };
+  const xte = crossTrackDistance(from, to, east);
+  assert.ok(Number.isFinite(xte) && xte > 0, `expected a real starboard XTE, got ${xte}`);
+});
+
 // ---------------------------------------------------------------------------
 // Formatters
 // ---------------------------------------------------------------------------
