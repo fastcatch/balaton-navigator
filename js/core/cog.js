@@ -95,7 +95,24 @@ export function computeCog(samples, { windowMs, minSpeedMps = MIN_SPEED_MPS, now
     y += leg.distance * Math.cos(toRad(leg.course));
   }
 
-  if (weight === 0 || seconds === 0 || weight / seconds < minSpeedMps) return { ...TOO_SLOW };
+  // Gate on the same speed the readout shows, not on a second opinion.
+  //
+  // This used to gate on `weight / seconds` — speed differenced from the
+  // positions — while computeSog prefers the fixes' own Doppler figure. The
+  // two disagree exactly when it matters: drifting at 0.35 m/s, GPS scatter
+  // inflates the differenced speed past the threshold, so the panel drew a
+  // confident course while the speed beside it honestly read 0.7 knots. A
+  // steering indicator that contradicts the speedometer is worse than one
+  // that admits it does not know.
+  //
+  // The direction is deliberate. Trusting Doppler means a device that
+  // wrongly reports a standstill loses the turn readout — but that fails to
+  // an em dash, and this app's rule throughout is that no figure beats a
+  // plausible wrong one.
+  const sogMps = computeSog(samples, { windowMs, nowT });
+  if (weight === 0 || seconds === 0 || sogMps == null || sogMps < minSpeedMps) {
+    return { ...TOO_SLOW };
+  }
 
   // Resultant length: 1 when every leg agreed, falling towards 0 as they
   // diverge. Converted to a circular standard deviation, because degrees of

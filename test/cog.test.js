@@ -271,3 +271,22 @@ test('a fix gap wider than windowMs leaves cog and sog in agreement', () => {
   assert.equal(cog.status, 'ok', 'cog should report a course');
   assert.ok(Number.isFinite(sog), 'sog should report a speed, not null');
 });
+
+test('a course is refused when the reported speed says the boat is drifting', () => {
+  // Positions scatter enough to imply real travel; the device's own Doppler
+  // figure knows better. Gating on the differenced speed used to draw a
+  // confident course next to a speed readout of well under a knot.
+  const drifting = leg({ course: 90, speedMps: 3 }).map((s) => ({ ...s, speed: 0.2 }));
+  const result = computeCog(drifting, { windowMs: 5000, nowT: NOW });
+  assert.equal(result.status, 'slow');
+  assert.equal(result.cog, null);
+});
+
+test('course and speed agree about whether the boat is moving', () => {
+  // The pair must never contradict each other: a steering indicator beside a
+  // speedometer that disagrees with it is worse than no indicator at all.
+  const moving = leg({ course: 90, speedMps: 3 }).map((s) => ({ ...s, speed: 3 }));
+  const opts = { windowMs: 5000, nowT: NOW };
+  assert.equal(computeCog(moving, opts).status, 'ok');
+  assert.ok(computeSog(moving, opts) >= MIN_SPEED_MPS);
+});
