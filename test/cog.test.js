@@ -205,3 +205,20 @@ test('damping off uses only the newest pair', () => {
   const undamped = computeSog(samples, { windowMs: 0, nowT: NOW + 1000 });
   assert.ok(undamped > damped, 'the newest pair alone should show the jump');
 });
+
+test('a fix gap wider than windowMs leaves cog and sog in agreement', () => {
+  // Two fixes with a 10-second gap; windowMs is 3 seconds. The old sample
+  // lies outside the window, but its pair's ending sample lies inside.
+  // computeCog includes the leg (ending timestamp is inside). computeSog must
+  // too, or it silently blanks speed while the course indicator keeps reporting.
+  const samples = [
+    { lat: 46.9, lon: 17.9, accuracy: 5, speed: null, heading: null, t: 0 },
+    { lat: 46.91, lon: 17.91, accuracy: 5, speed: null, heading: null, t: 10000 },
+  ];
+
+  const cog = computeCog(samples, { windowMs: 3000, nowT: 10000 });
+  const sog = computeSog(samples, { windowMs: 3000, nowT: 10000 });
+
+  assert.equal(cog.status, 'ok', 'cog should report a course');
+  assert.ok(Number.isFinite(sog), 'sog should report a speed, not null');
+});

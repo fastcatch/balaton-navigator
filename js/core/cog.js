@@ -118,6 +118,12 @@ export function computeCog(samples, { windowMs, minSpeedMps = MIN_SPEED_MPS, now
  * back to distance over time when no fix in the window reports one: some
  * devices populate `speed` only while moving briskly.
  *
+ * Windows by consecutive pair: a pair is included if its LATER sample lies
+ * inside the window, mirroring how computeCog filters legs. This prevents
+ * disagreement when a fix gap exceeds windowMs — both functions remain silent
+ * together or report together, rather than one reporting while the other
+ * goes blank.
+ *
  * Lives here rather than beside the other derived figures because the
  * staleness rule and the meaning of `windowMs` already live in this module,
  * and two copies of those is how the course and the speed come to disagree.
@@ -126,19 +132,54 @@ export function computeSog(samples, { windowMs, nowT }) {
   if (!Array.isArray(samples) || samples.length < 2) return null;
   if (nowT - samples[samples.length - 1].t > STALE_MS) return null;
 
-  // `windowMs` of 0 means no damping, matching computeCog: the newest pair
-  // as it stands.
-  const used = windowMs > 0 ? samples.filter((s) => s.t >= nowT - windowMs) : samples.slice(-2);
-  if (used.length < 2) return null;
+  // Build pairs: each pair is [earlier, later].
+  const pairs = [];
+  for (let i = 1; i < samples.length; i++) {
+    const dt = samples[i].t - samples[i - 1].t;
+    // Duplicate or out-of-order timestamps would divide by zero below.
+    if (!(dt > 0)) continue;
+    pairs.push({
+      a: samples[i - 1],
+      b: samples[i],
+      distance: haversine(samples[i - 1], samples[i]),
+      dt,
+      t: samples[i].t, // Filter by the later sample's timestamp
+    });
+  }
+  if (pairs.length === 0) return null;
 
-  const reported = used.filter((s) => Number.isFinite(s.speed));
+  // Filter pairs by the later sample's timestamp, matching computeCog's leg filtering.
+  // `windowMs` of 0 means no damping: the newest pair only.
+  const used = windowMs > 0 ? pairs.filter((pair) => pair.t >= nowT - windowMs) : pairs.slice(-1);
+  if (used.length === 0) return null;
+
+  // Collect all samples participating in used pairs, in temporal order.
+  const seen = new Set();
+  const participating = [];
+  for (const pair of used) {
+    if (!seen.has(pair.a)) {
+      seen.add(pair.a);
+      participating.push(pair.a);
+    }
+    if (!seen.has(pair.b)) {
+      seen.add(pair.b);
+      participating.push(pair.b);
+    }
+  }
+  participating.sort((a, b) => a.t - b.t);
+
+  // Prefer device speeds from participating samples.
+  const reported = participating.filter((s) => Number.isFinite(s.speed));
   if (reported.length > 0) {
     return reported.reduce((sum, s) => sum + s.speed, 0) / reported.length;
   }
 
+  // Fall back to distance over time across used pairs.
   let distance = 0;
-  for (let i = 1; i < used.length; i++) distance += haversine(used[i - 1], used[i]);
-  const seconds = (used[used.length - 1].t - used[0].t) / 1000;
+  for (const pair of used) {
+    distance += pair.distance;
+  }
+  const seconds = (participating[participating.length - 1].t - participating[0].t) / 1000;
   return seconds > 0 ? distance / seconds : null;
 }
 
