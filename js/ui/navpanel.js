@@ -122,7 +122,13 @@ export function renderNavPanel(container, { nav, cog, instruments, settings }) {
       // asked in the other unit. It is derived from VMC, so it means "at
       // this rate of closing" — and reads as an em dash when the boat is
       // sailing away, which has no arrival time at all.
-      figure('Távolság', formatDistance(nav.distance, settings.units), {
+      //
+      // The caption widens to "Távolság · Idő" rather than gaining a second
+      // label element: without it, "1.24 NM  0:18" invites reading 0:18 as a
+      // clock time, and the 11px uppercase caption already exists, so this
+      // costs zero extra height — which was the entire reason IDŐ went
+      // inline instead of onto its own row.
+      figure('Távolság · Idő', formatDistance(nav.distance, settings.units), {
         sub: instruments.ttgSeconds == null ? '—' : formatDuration(instruments.ttgSeconds),
       }),
     ]),
