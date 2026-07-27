@@ -54,3 +54,23 @@ export const iconButton = (label, onClick, extraClass = '') =>
   });
 
 export const empty = (message) => el('p', { className: 'empty', textContent: message });
+
+/**
+ * A labelled figure for the instrument panels: a small caption over a large
+ * value.
+ *
+ * `sub` puts a second, smaller figure beside the value rather than beneath
+ * it — a sub-line would cost the panel about twenty pixels of height on
+ * every screen, and that height comes straight out of the chart.
+ *
+ * `valueClass` is how the data page draws its subordinate row smaller: XTE
+ * and distance remaining are consulted, not glanced at while steering.
+ */
+export const figure = (label, value, { sub = null, valueClass = 'nav-value' } = {}) =>
+  el('div', { className: 'nav-figure' }, [
+    el('div', { className: 'nav-label', textContent: label }),
+    el('div', { className: valueClass }, [
+      document.createTextNode(value),
+      sub ? el('span', { className: 'nav-sub', textContent: sub }) : null,
+    ]),
+  ]);

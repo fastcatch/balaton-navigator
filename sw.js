@@ -61,6 +61,7 @@ const SHELL = [
   './js/ui/dom.js',
   './js/ui/view.js',
   './js/ui/navpanel.js',
+  './js/ui/datapanel.js',
   './js/ui/routes.js',
   './js/ui/tracks.js',
   './js/ui/settings.js',

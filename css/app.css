@@ -577,6 +577,16 @@ button:disabled { opacity: 0.4; }
   touch-action: pan-y; /* same reason as .navpanel */
 }
 
+/* The subordinate row. Smaller than .nav-value because XTE and distance
+   remaining are consulted, not glanced at while steering. */
+.data-small {
+  font-size: 22px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--parchment);
+  font-variant-numeric: tabular-nums;
+}
+
 /* --- Page dots ------------------------------------------------------ *
  *
  * Overlaid on the map area rather than given a row of their own: a strip

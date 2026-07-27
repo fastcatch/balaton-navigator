@@ -19,7 +19,8 @@ import {
 import { applySeedRoutes } from './seeds.js';
 
 import { computeNav, advanceIfArrived } from './core/navigation.js';
-import { computeCog } from './core/cog.js';
+import { computeCog, computeSog } from './core/cog.js';
+import { computeInstruments } from './core/instruments.js';
 import { renderableSegments } from './core/track.js';
 import { trackToGpx, gpxFilename } from './core/gpx.js';
 import {
@@ -30,6 +31,7 @@ import {
 import { el, replace } from './ui/dom.js';
 import { createViewHost } from './ui/view.js';
 import { renderNavPanel } from './ui/navpanel.js';
+import { renderDataPanel } from './ui/datapanel.js';
 import { renderRoutesView } from './ui/routes.js';
 import { renderTracksView } from './ui/tracks.js';
 import { renderSettings } from './ui/settings.js';
@@ -201,12 +203,21 @@ function renderLive() {
 
   // Computed here rather than in onPosition so the readout also refreshes on
   // compass updates, and so it decays to 'nofix' when fixes stop arriving.
-  state.cog = computeCog(state.cogSamples, {
-    windowMs: state.settings.cogDampingS * 1000,
-    nowT: Date.now(),
+  const windowMs = state.settings.cogDampingS * 1000;
+  const nowT = Date.now();
+  state.cog = computeCog(state.cogSamples, { windowMs, nowT });
+
+  const instruments = computeInstruments({
+    position: state.position,
+    route: state.activeRoute,
+    targetIndex: state.targetIndex,
+    nav,
+    cog: state.cog,
+    sogMps: computeSog(state.cogSamples, { windowMs, nowT }),
   });
 
-  renderNavPanel($('navpanel'), { nav, cog: state.cog, settings: state.settings });
+  renderNavPanel($('navpanel'), { nav, cog: state.cog, instruments, settings: state.settings });
+  renderDataPanel($('datapanel'), { instruments, cog: state.cog, settings: state.settings });
   renderBanners();
   renderMapLayers();
 
