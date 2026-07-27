@@ -85,3 +85,21 @@ test('waypoint markers are only redrawn when they change', () => {
     'setWaypoints must be guarded by a change check'
   );
 });
+
+test('renderLive does not rebuild the pager', () => {
+  // The page dots are buttons. iOS synthesises a click only when pointerdown
+  // and pointerup land on the same element, so recreating them on a GPS fix
+  // would silently stop them working on the one device this app is for —
+  // while behaving perfectly on a desktop where no fixes arrive. The pager
+  // is created once in boot() and never touched again.
+  const body = bodyOf('function renderLive()');
+  assert.ok(!body.includes('createPager'), 'renderLive must not recreate the pager');
+  assert.ok(!body.includes('pagedots'), 'renderLive must not touch the dot container');
+});
+
+test('the pager is created exactly once', () => {
+  // The import has no parenthesis, so only the call site matches. More than
+  // one means a second pager is fighting the first for the same surfaces.
+  const calls = source.split('createPager(').length - 1;
+  assert.equal(calls, 1, 'createPager should be called once, in boot()');
+});
