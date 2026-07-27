@@ -1,5 +1,5 @@
 /**
- * Course over ground, derived from GPS fixes alone.
+ * Motion over ground — course and speed — derived from GPS fixes alone.
  *
  * Pure module: no DOM, no browser APIs, no I/O. This is what the turn
  * indicator steers by, so it is kept testable without a browser.
@@ -108,6 +108,38 @@ export function computeCog(samples, { windowMs, minSpeedMps = MIN_SPEED_MPS, now
     spreadDeg,
     status: spreadDeg > MAX_STEADY_SPREAD_DEG ? 'unsteady' : 'ok',
   };
+}
+
+/**
+ * Mean speed over ground in m/s across the damping window, or null.
+ *
+ * Prefers the fixes' own `speed`, which on most chipsets is Doppler-derived
+ * and so does not inherit the metres of error each position carries. Falls
+ * back to distance over time when no fix in the window reports one: some
+ * devices populate `speed` only while moving briskly.
+ *
+ * Lives here rather than beside the other derived figures because the
+ * staleness rule and the meaning of `windowMs` already live in this module,
+ * and two copies of those is how the course and the speed come to disagree.
+ */
+export function computeSog(samples, { windowMs, nowT }) {
+  if (!Array.isArray(samples) || samples.length < 2) return null;
+  if (nowT - samples[samples.length - 1].t > STALE_MS) return null;
+
+  // `windowMs` of 0 means no damping, matching computeCog: the newest pair
+  // as it stands.
+  const used = windowMs > 0 ? samples.filter((s) => s.t >= nowT - windowMs) : samples.slice(-2);
+  if (used.length < 2) return null;
+
+  const reported = used.filter((s) => Number.isFinite(s.speed));
+  if (reported.length > 0) {
+    return reported.reduce((sum, s) => sum + s.speed, 0) / reported.length;
+  }
+
+  let distance = 0;
+  for (let i = 1; i < used.length; i++) distance += haversine(used[i - 1], used[i]);
+  const seconds = (used[used.length - 1].t - used[0].t) / 1000;
+  return seconds > 0 ? distance / seconds : null;
 }
 
 /**

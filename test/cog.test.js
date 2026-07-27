@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeCog, chevronCount, MIN_SPEED_MPS, STALE_MS, ON_COURSE_DEG } from '../js/core/cog.js';
+import { computeCog, computeSog, chevronCount, MIN_SPEED_MPS, STALE_MS, ON_COURSE_DEG } from '../js/core/cog.js';
 
 const NOW = 1_700_000_000_000;
 
@@ -160,4 +160,48 @@ test('the upper threshold has hysteresis too', () => {
   assert.equal(chevronCount(25, 2), 3);
   assert.equal(chevronCount(24, 3), 3);
   assert.equal(chevronCount(23, 3), 2);
+});
+
+// ---------------------------------------------------------------------------
+// Speed over ground
+// ---------------------------------------------------------------------------
+
+test('speed is differenced from positions when the device reports none', () => {
+  const samples = leg({ course: 90, speedMps: 3 });
+  const sog = computeSog(samples, { windowMs: 5000, nowT: NOW });
+  assert.ok(Math.abs(sog - 3) < 0.1, `expected ~3 m/s, got ${sog}`);
+});
+
+test('the device speed is preferred over differencing positions', () => {
+  // Positions imply 3 m/s; the device insists on 7. Trusting the device is
+  // deliberate — on most chipsets it is Doppler-derived and so does not
+  // inherit the metres of error carried by each position.
+  const samples = leg({ course: 90, speedMps: 3 }).map((s) => ({ ...s, speed: 7 }));
+  const sog = computeSog(samples, { windowMs: 5000, nowT: NOW });
+  assert.ok(Math.abs(sog - 7) < 0.01, `expected the reported speed, got ${sog}`);
+});
+
+test('an empty or single-fix buffer reports no speed', () => {
+  assert.equal(computeSog([], { windowMs: 5000, nowT: NOW }), null);
+  assert.equal(
+    computeSog([{ lat: 46.9, lon: 17.9, accuracy: 5, speed: null, heading: null, t: NOW }],
+      { windowMs: 5000, nowT: NOW }),
+    null
+  );
+});
+
+test('a buffer of stale fixes reports no speed', () => {
+  const old = leg({ course: 90 }).map((s) => ({ ...s, t: s.t - STALE_MS - 1000 }));
+  assert.equal(computeSog(old, { windowMs: 5000, nowT: NOW }), null);
+});
+
+test('damping off uses only the newest pair', () => {
+  // Twenty slow fixes, then one fast metre-per-second jump at the end.
+  const slow = leg({ course: 90, speedMps: 1, count: 20 });
+  const last = slow[slow.length - 1];
+  const samples = [...slow, { ...last, lon: last.lon + 0.0002, t: NOW + 1000 }];
+
+  const damped = computeSog(samples, { windowMs: 30000, nowT: NOW + 1000 });
+  const undamped = computeSog(samples, { windowMs: 0, nowT: NOW + 1000 });
+  assert.ok(undamped > damped, 'the newest pair alone should show the jump');
 });
