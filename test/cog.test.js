@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { computeCog, computeSog, chevronCount, MIN_SPEED_MPS, STALE_MS, ON_COURSE_DEG } from '../js/core/cog.js';
+import { computeCog, computeSog, chevronCount, gpsFixQuality, MIN_SPEED_MPS, STALE_MS, ON_COURSE_DEG } from '../js/core/cog.js';
 
 const NOW = 1_700_000_000_000;
 
@@ -204,6 +204,55 @@ test('damping off uses only the newest pair', () => {
   const damped = computeSog(samples, { windowMs: 30000, nowT: NOW + 1000 });
   const undamped = computeSog(samples, { windowMs: 0, nowT: NOW + 1000 });
   assert.ok(undamped > damped, 'the newest pair alone should show the jump');
+});
+
+// ---------------------------------------------------------------------------
+// GPS fix quality — the header dot
+// ---------------------------------------------------------------------------
+
+const THRESHOLDS = { goodAccuracyM: 20, poorAccuracyM: 100 };
+
+test('no position reports no fix', () => {
+  assert.equal(gpsFixQuality(null, NOW, THRESHOLDS), 'none');
+});
+
+test('accuracy bands a current fix', () => {
+  assert.equal(gpsFixQuality({ accuracy: 10, t: NOW }, NOW, THRESHOLDS), 'good');
+  assert.equal(gpsFixQuality({ accuracy: 50, t: NOW }, NOW, THRESHOLDS), 'fair');
+  assert.equal(gpsFixQuality({ accuracy: 200, t: NOW }, NOW, THRESHOLDS), 'poor');
+});
+
+test('a fix reporting no accuracy at all counts as fair', () => {
+  // We have a position and no specific reason to doubt it — the same call
+  // isAccuracyUsable makes in navigation.js.
+  assert.equal(gpsFixQuality({ accuracy: null, t: NOW }, NOW, THRESHOLDS), 'fair');
+});
+
+test('a fix within STALE_MS still reports its accuracy band', () => {
+  assert.equal(
+    gpsFixQuality({ accuracy: 10, t: NOW - STALE_MS + 1 }, NOW, THRESHOLDS),
+    'good'
+  );
+});
+
+test('a fix older than STALE_MS reports no fix, whatever its accuracy', () => {
+  // This is the finding: without checking age, a 20 m fix that stopped
+  // arriving minutes ago would still shine green, while SOG/COG/VMC had
+  // already decayed to em dashes for exactly the same reason.
+  assert.equal(
+    gpsFixQuality({ accuracy: 10, t: NOW - STALE_MS - 1 }, NOW, THRESHOLDS),
+    'none'
+  );
+});
+
+test('a fix exactly STALE_MS old is still current, not stale', () => {
+  // computeCog and computeSog both use a strict `>` against STALE_MS; the
+  // dot must use the same comparison or it can disagree with them right at
+  // the boundary.
+  assert.equal(
+    gpsFixQuality({ accuracy: 10, t: NOW - STALE_MS }, NOW, THRESHOLDS),
+    'good'
+  );
 });
 
 test('a fix gap wider than windowMs leaves cog and sog in agreement', () => {

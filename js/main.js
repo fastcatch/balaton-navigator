@@ -19,7 +19,7 @@ import {
 import { applySeedRoutes } from './seeds.js';
 
 import { computeNav, advanceIfArrived } from './core/navigation.js';
-import { computeCog, computeSog } from './core/cog.js';
+import { computeCog, computeSog, gpsFixQuality } from './core/cog.js';
 import { computeInstruments } from './core/instruments.js';
 import { renderableSegments } from './core/track.js';
 import { trackToGpx, gpxFilename } from './core/gpx.js';
@@ -210,13 +210,21 @@ function renderMapLayers() {
  * A fix reporting no accuracy at all counts as 'fair': we have a position
  * and no specific reason to doubt it, which is the same call
  * `isAccuracyUsable` makes in navigation.js.
+ *
+ * Age is judged in `gpsFixQuality` itself against `STALE_MS`, the same
+ * constant `computeCog`/`computeSog` decay against — otherwise the compass
+ * keeps `renderLive()` firing at up to 60 Hz with no new fix arriving, and
+ * the dot would stay solid green while SOG, COG and VMC quietly decayed to
+ * em dashes underneath it. `nowT` is threaded in from the caller rather than
+ * read here, so the dot is judged against the exact same instant as the COG
+ * and SOG filters for this render — two clock reads per render is exactly
+ * the inconsistency this codebase avoids elsewhere.
  */
-function gpsQuality(position) {
-  if (!position) return 'none';
-  if (position.accuracy == null) return 'fair';
-  if (position.accuracy <= GOOD_ACCURACY_M) return 'good';
-  if (position.accuracy <= POOR_ACCURACY_M) return 'fair';
-  return 'poor';
+function gpsQuality(position, nowT) {
+  return gpsFixQuality(position, nowT, {
+    goodAccuracyM: GOOD_ACCURACY_M,
+    poorAccuracyM: POOR_ACCURACY_M,
+  });
 }
 
 /**
@@ -267,7 +275,7 @@ function renderLive() {
   $('btn-add').classList.toggle('is-active', state.addMode);
   $('btn-record').classList.toggle('is-recording', tracker.isRecording);
   $('btn-record').textContent = tracker.isRecording ? '■ Állj' : '● Rögzít';
-  $('gps-dot').className = `gps-dot gps-dot--${gpsQuality(state.position)}`;
+  $('gps-dot').className = `gps-dot gps-dot--${gpsQuality(state.position, nowT)}`;
 }
 
 /**

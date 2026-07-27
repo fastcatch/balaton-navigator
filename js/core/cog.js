@@ -208,6 +208,31 @@ const BANDS = [
 ];
 
 /**
+ * Coarse GPS fix quality for the header dot: accuracy banded, but only for a
+ * fix that is still current.
+ *
+ * `computeCog` and `computeSog` both go silent — decaying to em dashes —
+ * once a fix is older than `STALE_MS`. Without checking age here too, the
+ * dot stayed solid green through that whole decay, supplying a confident
+ * "GPS is fine" explanation for numbers that were actually going blank for
+ * lack of one. Reusing `STALE_MS` rather than a second constant is what
+ * keeps the dot and the filters unable to disagree about when a fix stops
+ * counting.
+ *
+ * Pure and age-aware rather than clock-reading: the caller passes `nowT` so
+ * a render only reads `Date.now()` once, the same instant `computeCog` and
+ * `computeSog` are judged against.
+ */
+export function gpsFixQuality(position, nowT, { goodAccuracyM, poorAccuracyM }) {
+  if (!position) return 'none';
+  if (nowT - position.t > STALE_MS) return 'none';
+  if (position.accuracy == null) return 'fair';
+  if (position.accuracy <= goodAccuracyM) return 'good';
+  if (position.accuracy <= poorAccuracyM) return 'fair';
+  return 'poor';
+}
+
+/**
  * How many chevrons to draw for a turn of `absDeg`: 0 (on course) to 3.
  *
  * Stateless — the caller passes back what was drawn last time, which is what
