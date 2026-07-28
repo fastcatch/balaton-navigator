@@ -661,15 +661,63 @@ button:disabled { opacity: 0.4; }
   padding: 16px 12px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 20px;
+  /* Spread down the page rather than huddled in the middle of it. The three
+     rows come to about 230px; the page has 513px to put them in on a 390x844
+     phone and 620px on a 430x932, so centring left roughly 280px of the panel
+     dead — split between a top and a bottom margin, while the rows themselves
+     sat 24px apart and read as one block of type rather than three readings.
+
+     space-evenly rather than a bigger gap, because the surplus is not a fixed
+     quantity: #map-wrap is flex:1, so a banner appearing takes its height
+     straight out of this panel. Distributing whatever is left over means the
+     rows open up on a tall screen and close back to the gap below on a short
+     one, with no breakpoint to maintain. The gap stays as the floor — it is
+     what space-evenly cannot go beneath — so the crowded case is no worse
+     than it was before. Not space-between: that would pin the last row to the
+     bottom edge, on top of the attribution strip. */
+  justify-content: space-evenly;
+  gap: 24px;
   touch-action: pan-y; /* same reason as .navpanel */
 }
 
+/* Bigger here than on the navpanel, because there is room to be. The navpanel
+   shares its screen with the chart and every pixel it takes comes out of the
+   map; the data page owns the whole screen and spends the surplus on size.
+
+   Sized against the widest realistic figure rather than by eye. The binding
+   case is VMC hard on the nose in km/h — "−10.1", five tabular glyphs, which
+   measures 2.82em; the column it sits in is (viewport − 36px) / 2, the grid
+   being two even tracks inside 12px padding and a 12px gap. That puts the
+   wrap threshold at a near-constant 15.5vw across every phone width, so 15vw
+   is the largest round figure that holds, with the floor and cap covering the
+   ends where the ratio drifts. Nothing here says nowrap: overflowing would
+   hide a digit outright, and a figure with a digit missing still looks like a
+   reading. Wrapping at least looks broken. */
+.datapanel .nav-value { font-size: clamp(48px, 15vw, 68px); }
+
+/* Captions carry the meaning on this page in a way they never do on the
+   navpanel, where position and shape say which figure is which. Here SOG sits
+   beside VMC — two speeds, same units, both to one decimal — and the caption
+   is the only thing telling them apart. At 11px in --parchment-dim that was a
+   legend to be deciphered rather than read, so: parchment at full strength,
+   larger, and with the tracking eased off, since letter-spacing that opens up
+   small caps only smears them at this size. */
+.datapanel .nav-label {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--parchment);
+}
+
 /* The subordinate row. Smaller than .nav-value because XTE and distance
-   remaining are consulted, not glanced at while steering. */
+   remaining are consulted, not glanced at while steering.
+   Scaled for the same reason and by the same method: "◀ 0.32 NM" runs 5.1em
+   — wider than any speed figure, arrow and unit included — which caps it at
+   about 8.7vw. 8.2vw, floored and capped to match the row above: this is the
+   tightest figure on the page, and the measurements behind these ratios come
+   from SF, so the extra margin is what covers Roboto and Segoe UI. */
 .data-small {
-  font-size: 22px;
+  font-size: clamp(26px, 8.2vw, 38px);
   line-height: 1.1;
   font-weight: 700;
   color: var(--parchment);
