@@ -168,6 +168,31 @@ export function createMap(elementId, { onMapClick, onWaypointClick, onFollowChan
     displayHeading += relativeBearing(heading, current);
   }
 
+  /**
+   * Keep Leaflet's cached container size honest.
+   *
+   * Leaflet measures the container once and then only re-measures on a window
+   * resize. #map-wrap is flex:1 — its height is whatever the header, banners
+   * and navpanel leave over — so it changes size constantly without the
+   * window ever resizing: a banner appears, the navpanel is rebuilt taller.
+   *
+   * The worst case is the very first one. createMap runs before the opening
+   * render, when #navpanel is still an empty section 21px tall, so Leaflet
+   * caches a container 186px taller than the one it ends up with. Every
+   * centring operation then aims at half of that: panTo puts the boat 93px
+   * below the middle of the visible map, which on a phone is the lower third.
+   * Nothing looks broken — the map is simply, quietly, aimed wrong.
+   *
+   * Left to the default `pan: true`, invalidateSize preserves the geographic
+   * centre across the correction, which is the right answer both with a fix
+   * (the centre is the boat, so the boat re-centres) and without one (the
+   * opening Balaton view stays put). No feedback loop: this moves the map
+   * pane, never the container.
+   */
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(() => map.invalidateSize()).observe(map.getContainer());
+  }
+
   // Panning by hand turns off following so the user can look around freely
   // (spec 6.2). Programmatic setView does not fire dragstart, so this needs
   // no suppression flag. Pinch-zoom deliberately does not break follow.
