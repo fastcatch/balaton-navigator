@@ -309,8 +309,14 @@ button:disabled { opacity: 0.4; }
   color: var(--brass-bright);
   letter-spacing: -0.08em;
 }
+/* Smaller than the chevrons by a wide margin, and smaller than it used to be.
+   The ordering this block is built on is chevrons over number over tape: at
+   six knots in chop the direction has to arrive before anything is read, and
+   the number is the follow-up question. Sizing it just under the chevrons had
+   the two competing for the glance instead. Taking it down also buys the room
+   the sign now needs, so "+12°" is no wider than "12°" was. */
 .nav-turn__degrees {
-  font-size: 40px;
+  font-size: 32px;
   line-height: 1;
   font-weight: 700;
   color: #fff;

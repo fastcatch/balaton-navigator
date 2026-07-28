@@ -54,9 +54,25 @@ function turnReadout(rel) {
   // swing the display between port and starboard.
   const glyph = lastChevrons === 0 ? '⬆' : (rel < 0 ? '◀' : '▶').repeat(lastChevrons);
 
+  // Signed, so the figure reads as a correction to make rather than a course
+  // to steer. Unsigned, "12°" under a chevron pointing to port could be read
+  // as a bearing of 012 — and 012 is a heading somebody could plausibly be
+  // asked to steer, so nothing about the misreading announces itself.
+  //
+  // Starboard positive, port negative, which is the sign relativeBearing
+  // already returns rather than a convention invented here. U+2212 for the
+  // minus, matching formatSpeedValue, so a negative turn and a negative VMC
+  // are the same glyph two panels apart.
+  //
+  // No sign at all on zero: "+0°" claims a direction for a correction that
+  // has none, and the chevrons have already given up on the distinction by
+  // then — lastChevrons is 0 and the glyph is pointing straight up.
+  const whole = Math.round(rel);
+  const sign = whole > 0 ? '+' : whole < 0 ? '−' : '';
+
   return el('div', { className: 'nav-turn' }, [
     el('div', { className: 'nav-turn__chevrons', textContent: glyph }),
-    el('div', { className: 'nav-turn__degrees', textContent: `${Math.round(abs)}°` }),
+    el('div', { className: 'nav-turn__degrees', textContent: `${sign}${Math.abs(whole)}°` }),
   ]);
 }
 
