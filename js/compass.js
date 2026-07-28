@@ -1,8 +1,14 @@
 /**
  * Device compass heading.
  *
- * Entirely optional. When unavailable the app loses only the relative-bearing
- * arrow; the bearing and distance numbers are unaffected (spec 8).
+ * Entirely optional, and it feeds the map alone: the view cone, the sight line
+ * and the heading figures astern of the boat. Without it those simply do not
+ * appear and nothing else changes (spec 8).
+ *
+ * It does NOT feed the turn indicator, whatever the shape of that readout may
+ * suggest. The turn is measured against course over ground — see the header of
+ * ui/navpanel.js for why — so it works with no compass at all, and enabling one
+ * will not conjure it up on a boat that is not moving.
  *
  * iOS requires `DeviceOrientationEvent.requestPermission()` to be called from
  * a user gesture, which is why this cannot be started automatically.

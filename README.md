@@ -15,8 +15,12 @@ adat a telefonon marad.
 4. Indítsd a kezdőképernyőn megjelenő ikonról. Innentől teljes képernyős appként fut.
 
 Első indításkor engedélyezd a **helymeghatározást**. Az iránytűt külön kell
-engedélyezni, egy gombnyomásra — enélkül is minden működik, csak az irányjelző
-nyíl nem jelenik meg.
+engedélyezni, egy gombnyomásra — enélkül is minden működik, csak a térképi
+látóirány marad el (a kúp, a látóvonal és a mögötte lévő fokszám).
+
+A navigációs sáv **fordulásjelzője nem az iránytűből jön**, hanem a GPS-ből
+számolt haladási irányból, így iránytű nélkül is megvan — mozgás viszont kell
+hozzá.
 
 > A kezdőképernyőre telepítés nem csak kényelmi kérdés: az így telepített appok
 > adatait a Safari tartósabban őrzi meg, mint egy sima böngészőfülét.
@@ -45,6 +49,30 @@ Pontatlan jelnél nem vált, mert egy ±200 m-es helymeghatározás egyszerre t�
 waypointon is „belül” lenne.
 
 Nincs mentés gomb. Minden változás azonnal mentődik.
+
+### A két képernyő
+
+Vízszintes húzással — vagy a térkép tetején lévő két pöttyre koppintva — válthatsz
+a két képernyő között. A pöttyök mindkét lapon látszanak, így mindig tudod, hol jársz.
+
+- **Térkép** — a chart, alatta a navigációs sáv: irányszög, hátralévő táv, becsült
+  idő és a fordulásjelző.
+- **Adatok** — teljes képernyős műszerlap, nagy számokkal. Azokat a mutatókat hozza,
+  amiket a hajó saját műszerei vagy elrejtenek, vagy GPS híján meg sem tudnak adni.
+
+| Rövidítés | Mit jelent |
+|---|---|
+| **SOG** | *Speed over ground* — tényleges sebesség a föld felszínéhez képest. |
+| **VMC** | *Velocity made good on course* — ebből mennyi visz ténylegesen a cél felé. Minél jobban elfordulsz a céltól, annál kisebb; ha távolodsz, negatív. |
+| **COG** | *Course over ground* — amerre a hajó ténylegesen halad. |
+| **XTE** | *Cross-track error* — mennyivel vagy oldalra a tervezett vonaltól. A nyíl arra mutat, **amerre vissza kell térni**, nem arra, amerre elsodródtál. |
+
+A SOG, a VMC és a COG egymást követő GPS-pozíciókból számolódik, ezért **mozgás
+kell hozzájuk**; állva vagy nagyon lassan em dash (—) áll a helyükön. Sosem nulla:
+a nulla mérésnek látszana, a gondolatjel nem.
+
+Az XTE ezen kívül **csak a második szakasztól** létezik, mert az első bója mögött
+nincs olyan pont, amihez a vonalat mérni lehetne. Ilyenkor is em dash áll ott.
 
 ---
 
@@ -79,14 +107,35 @@ Ezért érdemes indulás előtt, wifin végigböngészni a tervezett útvonalat.
 > OpenStreetMap csempehasználati szabályzatát. Az app csak azt tárolja el,
 > amit ténylegesen megjelenített.
 
+### Fordulásjelző
+
+A navigációs sáv alsó fele azt mutatja, **mennyit kell fordulni** ahhoz, hogy a
+következő bója felé haladj:
+
+- **Chevronok** — merre. Egy, kettő vagy három, aszerint, hogy mekkora az eltérés.
+  Felfelé mutató nyíl (⬆) azt jelenti, hogy jó irányban vagy.
+- **Előjeles fokszám** — mennyit. A `+` jobbra, a `−` balra fordulást jelent.
+  Az előjel nem díszítés: `+12°` egy *korrekció*, a fölötte lévő `012°` viszont
+  egy *irány*, és előjel nélkül a kettő egyformán néz ki.
+- **Szalag** — ugyanez folytonosan, ±45°-ig; azon túl kiüt a szélére.
+
+Ez **nem az iránytűből** jön, hanem a GPS-ből számolt haladási irányból: abból,
+amerre a hajó *ténylegesen megy*, nem abból, amerre a telefon néz. Ezért mindegy,
+hogyan tartod a telefont — és ezért kell hozzá mozgás. Álló helyzetben vagy túl
+lassan a helyén rövid szöveg mondja meg, miért nincs.
+
+A **Haladási irány simítása** beállítás (alapból 5 mp) azt szabja meg, mennyi
+GPS-előzményből átlagolódik az irány. Kisebb érték élénkebb, de nyugtalanabb;
+fordulás közben a kijelzés elhalványul, amíg az új irány be nem áll.
+
 ### Iránytű és nézőirány
 
 Az irányszám (pl. `171°`) mindig **valós északhoz** viszonyított, és GPS-ből
 számolódik. Iránytű nélkül a számok ugyanolyan pontosak.
 
-Ha az iránytű engedélyezve van, négy dolgot kapsz még:
+Ha az iránytű engedélyezve van, három dolgot kapsz még — mindhárom a
+**térképen**, és mindhárom arról szól, merre *nézel*, nem arról, merre *mész*:
 
-- **Nyíl a navigációs sávban** — fordulj, amíg felfelé mutat.
 - **Látómező-kúp a saját pozíción** — merre nézel éppen.
 - **Szaggatott vonal a képernyő széléig** — mi van előtted a távolban.
   A vonal mindig kifut a látható térkép szélén túlra, így nagyításnál is
