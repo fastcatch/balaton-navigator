@@ -121,7 +121,12 @@ function currentNav() {
 function renderBanners() {
   const banners = [];
 
-  if (state.positionError === POSITION_ERROR.DENIED) {
+  // Demo mode supplies its own position, so whatever the real watch is
+  // complaining about is beside the point — and a "location is disabled"
+  // error sitting above a boat that is plainly on the map reads as a fault.
+  const positionError = DEMO_HEADING ? null : state.positionError;
+
+  if (positionError === POSITION_ERROR.DENIED) {
     banners.push(
       el('div', { className: 'banner banner--error' }, [
         el('strong', { textContent: 'A helymeghatározás le van tiltva. ' }),
@@ -131,9 +136,9 @@ function renderBanners() {
         ),
       ])
     );
-  } else if (state.positionError === POSITION_ERROR.UNSUPPORTED) {
+  } else if (positionError === POSITION_ERROR.UNSUPPORTED) {
     banners.push(el('div', { className: 'banner banner--error', textContent: 'Ez a böngésző nem támogatja a helymeghatározást.' }));
-  } else if (state.positionError === POSITION_ERROR.UNAVAILABLE) {
+  } else if (positionError === POSITION_ERROR.UNAVAILABLE) {
     banners.push(el('div', { className: 'banner banner--warn', textContent: 'Nincs GPS-jel. Az app a legutóbbi ismert pozíciót mutatja.' }));
   }
 
@@ -149,6 +154,12 @@ function renderBanners() {
 
   if (!state.online) {
     banners.push(el('div', { className: 'banner banner--warn', textContent: 'Nincs internet. A navigáció működik, új térképcsempék nem töltődnek be.' }));
+  }
+
+  // Said out loud because this mode invents a GPS fix. A boat sitting mid-lake
+  // that never moves is confusing enough without having to guess why.
+  if (DEMO_HEADING) {
+    banners.push(el('div', { className: 'banner banner--warn', textContent: 'Demó: a látóirányt az egérmutató adja, a pozíció kitalált.' }));
   }
 
   if (state.compassOffered && !state.compassOn) {
@@ -336,6 +347,37 @@ function onPositionError(kind) {
   if (kind === POSITION_ERROR.TIMEOUT) return;
   state.positionError = kind;
   renderLive();
+}
+
+/**
+ * Demo mode: `?demo=heading` points the sight line at the mouse.
+ *
+ * A desktop has no compass, so the cone, the sight line and the heading
+ * figures simply never appear there — the one part of the map that cannot be
+ * looked at while developing it. This stands in for the sensor: the bearing
+ * from the boat to the pointer, fed through exactly the path a real reading
+ * takes, so what is on screen is the real code and not a mock of it.
+ *
+ * It also seeds a position, because without a fix there is no marker to hang
+ * any of it on and the flag would appear to do nothing. Seeded only if the
+ * real watch has not already produced one, and a genuine fix arriving later
+ * overwrites it like any other.
+ */
+const DEMO_HEADING = new URLSearchParams(location.search).get('demo') === 'heading';
+
+/** Open water in the Szántód–Tihany strait, so the seeded boat is afloat. */
+const DEMO_POSITION = { lat: 46.882, lon: 17.888 };
+
+function startHeadingDemo() {
+  if (!state.position) {
+    onPosition({ ...DEMO_POSITION, accuracy: 10, speed: null, heading: null, t: Date.now() });
+  }
+
+  map.onPointerBearing((heading) => {
+    state.viewHeading = heading;
+    map.setHeading(heading);
+    renderLive();
+  });
 }
 
 async function enableCompass() {
@@ -683,6 +725,8 @@ async function boot() {
 
   // --- Go -----------------------------------------------------------
   watchPosition({ onPosition, onError: onPositionError });
+
+  if (DEMO_HEADING) startHeadingDemo();
 
   // Nothing else drives a render when the data stops arriving.
   //

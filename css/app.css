@@ -627,6 +627,65 @@ button:disabled { opacity: 0.4; }
 }
 .pos-marker--heading .pos-marker__cone { opacity: 1; }
 
+/* The sight line continued abaft the boat, carrying the heading in figures.
+   Dimmer and thinner than the line forward — it is there to tie the number
+   to the axis, not to be looked along. */
+.pos-marker__stub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 46px;
+  margin-left: -1px;
+  background: linear-gradient(to bottom, rgba(255, 45, 149, 0.75), rgba(255, 45, 149, 0.25));
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+/* Zero-sized anchor. It rides the marker's rotation, so translateY pushes
+   along whatever "astern" currently means; the chip inside is what gets
+   counter-rotated back to upright. Splitting the two keeps each transform
+   doing one job — combining them on a single element makes the order of
+   translate and rotate load-bearing, and it silently stops being astern. */
+.pos-marker__tag {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+
+.pos-marker__tag-chip {
+  position: absolute;
+  left: 0;
+  top: 52px;
+  /* Centred on that point before rotating, so the chip turns about itself
+     rather than swinging around the boat. */
+  margin: -11px 0 0 -26px;
+  width: 52px;
+  height: 22px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  background: rgba(43, 10, 28, 0.9);
+  border: 1px solid rgba(255, 45, 149, 0.7);
+  color: #ffd9ec;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  /* Matches .pos-marker's own transition exactly, so the counter-rotation
+     lands on the same frames as the rotation it is cancelling. Any mismatch
+     shows up as the text lolling and righting itself on every swing. */
+  transition: transform 0.2s linear, opacity 0.25s ease;
+}
+
+.pos-marker--heading .pos-marker__stub,
+.pos-marker--heading .pos-marker__tag-chip { opacity: 1; }
+
 .leaflet-container { background: #0a2036; font: inherit; }
 .leaflet-control-attribution {
   background: rgba(6, 22, 38, 0.82) !important;

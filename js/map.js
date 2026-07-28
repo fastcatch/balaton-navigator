@@ -10,7 +10,7 @@
 
 /* global L */
 
-import { haversine, destinationPoint, relativeBearing } from './core/geo.js';
+import { haversine, destinationPoint, relativeBearing, initialBearing, formatBearing } from './core/geo.js';
 
 /** Bounding box for the opening view, before any GPS fix arrives. */
 const BALATON_VIEW = [
@@ -51,12 +51,27 @@ const HEADING_COLOR = '#ff2d95';
 const HEADING_CASING = '#2b0a1c';
 
 /**
- * Own-position marker: a view cone behind a dot.
+ * Own-position marker: a view cone behind a dot, and the heading in figures
+ * astern.
  *
  * The whole element is rotated to the heading. The cone fades out towards
  * its far edge, because the direction is known far more precisely than how
  * far ahead the sailor can actually see — a hard edge would suggest a range
  * the app is not measuring.
+ *
+ * The figures go ASTERN, which is the one placement that keeps them out of
+ * the way: the forward half of the sight line is the half being aimed at
+ * marks, so a label anywhere along it obscures the thing it describes, while
+ * abaft the beam is dead space. Riding on the marker also means the boat
+ * being centred keeps the figures on screen at any zoom, which a label
+ * further out along the line could not promise.
+ *
+ * A number sitting on the 057 side of the boat while reading 237 is an
+ * invitation to a reciprocal error, so it is drawn as a label on an AXIS
+ * rather than a mark in a direction: the stub continues the sight line
+ * abaft, dimmer than the line forward of the boat, and the figures hang off
+ * the end of it. Bright end forward, dim end aft, one line through the boat.
+ * The cone remains the only thing asserting which way is ahead.
  */
 const POSITION_MARKER_HTML = `
 <div class="pos-marker">
@@ -71,6 +86,8 @@ const POSITION_MARKER_HTML = `
           fill="url(#cone-fade)"
           stroke="rgba(255,255,255,0.85)" stroke-width="1.5" stroke-linejoin="round"/>
   </svg>
+  <div class="pos-marker__stub"></div>
+  <div class="pos-marker__tag"><div class="pos-marker__tag-chip"></div></div>
   <div class="pos-marker__dot"></div>
 </div>`;
 
@@ -241,7 +258,15 @@ export function createMap(elementId, { onMapClick, onWaypointClick, onFollowChan
 
   map.on('moveend zoomend', updateHeadingLine);
 
-  /** Point the marker's cone along the heading, or hide it if there is none. */
+  /**
+   * Point the marker's cone along the heading, or hide it if there is none.
+   *
+   * The chip is counter-rotated by exactly what the marker was rotated by, so
+   * the figures stay upright however the boat lies. Cancelling `displayHeading`
+   * rather than `heading` matters: the two differ by whole turns once the
+   * accumulator has wound past 360, and cancelling the wrong one would spin
+   * the text the long way round while the marker took the short way.
+   */
   function applyMarkerRotation(heading) {
     // firstElementChild, not firstChild: the icon markup is indented, so
     // firstChild is a text node with no style or classList.
@@ -249,6 +274,14 @@ export function createMap(elementId, { onMapClick, onWaypointClick, onFollowChan
     if (!el) return;
     el.style.transform = heading == null ? '' : `rotate(${displayHeading}deg)`;
     el.classList.toggle('pos-marker--heading', heading != null);
+
+    const chip = el.querySelector('.pos-marker__tag-chip');
+    if (!chip) return;
+    chip.style.transform = heading == null ? '' : `rotate(${-displayHeading}deg)`;
+    // True, not magnetic: watchHeading has already applied the declination,
+    // and the panel's Irányszög is true. Two figures meant to be compared at
+    // a glance cannot be on different references.
+    chip.textContent = heading == null ? '' : formatBearing(heading);
   }
 
   function waypointIcon(number, isTarget) {
@@ -358,6 +391,26 @@ export function createMap(elementId, { onMapClick, onWaypointClick, onFollowChan
 
     clearTrack() {
       trackLayer.clearLayers();
+    },
+
+    /**
+     * Report the bearing from the boat to the pointer, for driving the sight
+     * line on a machine with no compass.
+     *
+     * Demo scaffolding, deliberately kept behind a caller that only wires it
+     * up under a URL flag — but it lives here because it is Leaflet that
+     * turns a pointer event into a coordinate, and nothing outside this file
+     * is allowed to know that.
+     *
+     * `mousemove` only, not `touchstart`: on a touch device the compass is
+     * the real source, and claiming the same gestures the map pans with
+     * would break it for the case this is only standing in for.
+     */
+    onPointerBearing(handler) {
+      map.on('mousemove', (e) => {
+        if (!lastPosition) return;
+        handler(initialBearing(lastPosition, { lat: e.latlng.lat, lon: e.latlng.lng }));
+      });
     },
 
     setFollow(value) {
