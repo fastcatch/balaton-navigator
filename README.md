@@ -84,17 +84,28 @@ Ezért érdemes indulás előtt, wifin végigböngészni a tervezett útvonalat.
 Az irányszám (pl. `171°`) mindig **valós északhoz** viszonyított, és GPS-ből
 számolódik. Iránytű nélkül a számok ugyanolyan pontosak.
 
-Ha az iránytű engedélyezve van, három dolgot kapsz még:
+Ha az iránytű engedélyezve van, négy dolgot kapsz még:
 
 - **Nyíl a navigációs sávban** — fordulj, amíg felfelé mutat.
 - **Látómező-kúp a saját pozíción** — merre nézel éppen.
 - **Szaggatott vonal a képernyő széléig** — mi van előtted a távolban.
   A vonal mindig kifut a látható térkép szélén túlra, így nagyításnál is
   megmutatja, mire nézel.
+- **Fokszám a pozíciójel mögött** — maga a látóirány, fokban.
 
-A kúp és a vonal **csak akkor jelenik meg, ha van valódi iránymérés**. Ha az
-iránytű nem elérhető, a saját pozíció sima pont marad — az app nem mutat
-olyan irányt, amit nem mért meg.
+A fokszám azért kerül *mögé*, mert előre a látóvonalat nézed: bármi, ami a
+vonalon ül, épp azt takarja, amire nézel. A hajó mögé egy halványabb
+vonaldarab fut ki, és a szám annak a végén lóg — vagyis ugyanannak a
+tengelynek a felirata, nem külön irány. Hogy merre van előre, azt továbbra is
+egyedül a kúp mondja meg.
+
+A szám **valós északhoz** viszonyít, ahogy a sáv **Irányszög** értéke is, így a
+kettő közvetlenül összevethető: a látóirány azt mondja, merre nézel, az
+irányszög azt, merre van a következő bója.
+
+A kúp, a vonal és a fokszám **csak akkor jelenik meg, ha van valódi
+iránymérés**. Ha az iránytű nem elérhető, a saját pozíció sima pont marad — az
+app nem mutat olyan irányt, amit nem mért meg.
 
 Álló helyzetben az iránytű az irányadó. Ha nincs iránytű, az app a GPS-ből
 számolt haladási irányt használja, ami viszont csak mozgás közben létezik.
@@ -115,7 +126,7 @@ semmit nem importálnak a böngészőből, ezért közvetlenül futnak Node alat
 emiatt tesztelhető a navigációs logika böngésző nélkül.
 
 ```bash
-npm test      # unit tesztek (node --test), ~110 teszt
+npm test      # unit tesztek (node --test), ~215 teszt
 npm run serve # http://localhost:8000
 npm run icons # ikonok újragenerálása
 ```
@@ -175,8 +186,11 @@ Statikus fájlok, bármilyen HTTPS-t adó tárhelyre kirakhatók. GitHub Pages-r
 `Settings → Pages → Deploy from a branch → main / (root)`. Minden útvonal
 relatív, így az alkönyvtáras URL (`felhasznalo.github.io/repo/`) is működik.
 
-Új verzió kiadásakor **emeld meg a `VERSION` konstanst a `sw.js` elején**,
-különben a régi, gyorsítótárazott változat marad a telefonokon.
+Új verzió kiadásakor **emeld meg a `SHELL_VERSION` konstanst a `sw.js`
+elején**, különben a régi, gyorsítótárazott változat marad a telefonokon — és
+a fejlesztői gépen is, ahol ez úgy jelentkezik, hogy a frissítés egyszerűen
+nincs ott. A `TILE_VERSION`-höz ne nyúlj: az a csempe-cache-t dobja el, amit
+csak a tó újraböngészésével lehet visszatölteni.
 
 ---
 

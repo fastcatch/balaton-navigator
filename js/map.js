@@ -10,7 +10,7 @@
 
 /* global L */
 
-import { haversine, destinationPoint, relativeBearing, initialBearing, formatBearing } from './core/geo.js';
+import { haversine, destinationPoint, relativeBearing, formatBearing } from './core/geo.js';
 
 /** Bounding box for the opening view, before any GPS fix arrives. */
 const BALATON_VIEW = [
@@ -391,26 +391,6 @@ export function createMap(elementId, { onMapClick, onWaypointClick, onFollowChan
 
     clearTrack() {
       trackLayer.clearLayers();
-    },
-
-    /**
-     * Report the bearing from the boat to the pointer, for driving the sight
-     * line on a machine with no compass.
-     *
-     * Demo scaffolding, deliberately kept behind a caller that only wires it
-     * up under a URL flag — but it lives here because it is Leaflet that
-     * turns a pointer event into a coordinate, and nothing outside this file
-     * is allowed to know that.
-     *
-     * `mousemove` only, not `touchstart`: on a touch device the compass is
-     * the real source, and claiming the same gestures the map pans with
-     * would break it for the case this is only standing in for.
-     */
-    onPointerBearing(handler) {
-      map.on('mousemove', (e) => {
-        if (!lastPosition) return;
-        handler(initialBearing(lastPosition, { lat: e.latlng.lat, lon: e.latlng.lng }));
-      });
     },
 
     setFollow(value) {
