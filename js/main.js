@@ -363,14 +363,41 @@ function onPositionError(kind) {
  * real watch has not already produced one, and a genuine fix arriving later
  * overwrites it like any other.
  */
-const DEMO_HEADING = new URLSearchParams(location.search).get('demo') === 'heading';
+const DEMO_PARAM = new URLSearchParams(location.search).get('demo');
+const DEMO_HEADING = DEMO_PARAM != null && DEMO_PARAM !== '';
+
+/**
+ * `?demo=-30` pins the sight line at that bearing instead of following the
+ * pointer; `?demo=heading` follows it. Negatives and values past 360 wrap, so
+ * -30 is 330.
+ *
+ * A pinned heading is the diagnostic half of this: it needs no events at all,
+ * so if the line appears pinned but will not follow the pointer, the fault is
+ * in the events rather than in any of the drawing.
+ */
+const DEMO_FIXED_HEADING = Number.isFinite(Number(DEMO_PARAM))
+  ? ((Number(DEMO_PARAM) % 360) + 360) % 360
+  : null;
 
 /** Open water in the Szántód–Tihany strait, so the seeded boat is afloat. */
 const DEMO_POSITION = { lat: 46.882, lon: 17.888 };
 
 function startHeadingDemo() {
+  // Set before the position, not after: setPosition takes the heading as an
+  // argument, so the marker is drawn already pointing rather than appearing
+  // plain and swinging a moment later.
+  if (DEMO_FIXED_HEADING != null) state.viewHeading = DEMO_FIXED_HEADING;
+
   if (!state.position) {
     onPosition({ ...DEMO_POSITION, accuracy: 10, speed: null, heading: null, t: Date.now() });
+  }
+
+  if (DEMO_FIXED_HEADING != null) {
+    // Also pushed directly, for the case where a real fix beat the seed to it
+    // and setPosition has already been and gone.
+    map.setHeading(DEMO_FIXED_HEADING);
+    renderLive();
+    return;
   }
 
   map.onPointerBearing((heading) => {
