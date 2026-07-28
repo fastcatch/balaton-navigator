@@ -35,7 +35,7 @@
  * TILE_VERSION exists only so the tile cache can be discarded deliberately —
  * a change to the tile key format or host list. Routine deploys leave it be.
  */
-const SHELL_VERSION = 'v17';
+const SHELL_VERSION = 'v18';
 const TILE_VERSION = 'v6';
 const SHELL_CACHE = `balaton-shell-${SHELL_VERSION}`;
 const TILE_CACHE = `balaton-tiles-${TILE_VERSION}`;

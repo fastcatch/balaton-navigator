@@ -723,7 +723,16 @@ button:disabled { opacity: 0.4; }
   inset: 0;
   z-index: 1100;
   background: #000;
-  padding: 16px 12px;
+  /* Top padding reserves the page dots, which sit inside this same #map-wrap
+     and are deliberately raised above this panel so they keep showing on both
+     pages. Being above it, they do not push the figures anywhere — they land
+     on top of SOG and VMC, dead centre where the two columns meet.
+     8px offset + 36px of dot = 44, plus 8 to breathe. Whether it showed was
+     down to how much slack space-evenly had left: clear by 27px on a 390x844,
+     overlapping by 21 on a 360x640, and clear by 4 on a 360x740 — which a
+     banner appearing is more than enough to close. Reserving the band settles
+     it for every screen rather than for the ones that happen to be tall. */
+  padding: 52px 12px 16px;
   display: flex;
   flex-direction: column;
   /* Spread down the page rather than huddled in the middle of it. The three
@@ -787,6 +796,26 @@ button:disabled { opacity: 0.4; }
   font-weight: 700;
   color: var(--parchment);
   font-variant-numeric: tabular-nums;
+}
+
+/* A 320x568 phone has not got the height for the panel at full size: three
+   rows, their gaps and the reserved dot band come to more than the map area
+   is, and the surplus falls off the bottom — taking the XTE row with it.
+   The figures are sized against the WIDTH they must fit (see above), so no
+   amount of vw arithmetic notices this; height is a separate constraint and
+   needs saying separately.
+
+   Whitespace goes first and the figures only as far as they must, so a small
+   screen loses air rather than legibility. 600px rather than 640: a 360x640
+   fits with 8px to spare, and there is no sense shrinking a panel that fits.
+
+   Placed after every rule it overrides: these selectors match the ones above
+   exactly, so on equal specificity it is source order alone deciding, and
+   higher up the file the .data-small line here is simply dead. */
+@media (max-height: 600px) {
+  .datapanel { gap: 10px; padding-bottom: 4px; }
+  .datapanel .nav-value { font-size: clamp(34px, 12vw, 48px); }
+  .data-small { font-size: clamp(22px, 7.5vw, 30px); }
 }
 
 /* --- Page dots ------------------------------------------------------ *
